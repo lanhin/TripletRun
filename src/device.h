@@ -54,9 +54,10 @@ namespace triplet{
     typedef std::map<std::pair<int, int>, float> connection;
 
     void NewLink(int src, int dst, float bw, bool BetweenNode=false); //Add a new link to the connection
-    float GetBW(int src, int dst, bool BetweenNode=false); //Get bandwidth
+    float GetBw(int src, int dst, bool BetweenNode=false); //Get bandwidth
     
-    connection NodesConnection, DeviceConnection;
+    connection NodeConnection;
+    connection DeviceConnection;
   };
 
 } //namespace triplet

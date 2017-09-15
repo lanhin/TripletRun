@@ -6,8 +6,10 @@
 
 #include "device.h"
 #include <cassert>
+#include <iostream>
 
 namespace triplet{
+  //The Device class
   Device::Device()
     : id_(-1),
       status(UNAVAILABLE),
@@ -77,6 +79,18 @@ namespace triplet{
   int Device::GetLocation(){
     return location;
   }
+
+  // The Connections class
+  Connections::Connections(){
+  }
+
+  Connections::~Connections(){
+    NodeConnection.clear();
+    DeviceConnection.clear();
+
+    assert(NodeConnection.empty());
+    assert(DeviceConnection.empty());
+  }
   
   void Connections::NewLink(int src, int dst, float bw, bool BetweenNode){ //Add a new link to the connection
     assert(src >= 0);
@@ -89,14 +103,14 @@ namespace triplet{
     }
     
     if (BetweenNode){
-      NodesConnection[std::pair<int, int>(src, dst)] = bw;
+      NodeConnection[std::pair<int, int>(src, dst)] = bw;
     }else{
       DeviceConnection[std::pair<int, int>(src, dst)] = bw;
     }
     
   }
 
-  float Connections::GetBW(int src, int dst, bool BetweenNode){ //Get bandwidth
+  float Connections::GetBw(int src, int dst, bool BetweenNode){ //Get bandwidth
     assert(src >= 0);
     assert(dst >= 0);
     assert(src != dst);
@@ -107,13 +121,13 @@ namespace triplet{
 
     connection::iterator it;
     if (BetweenNode){
-      if (NodesConnection.find(std::pair<int, int>(src,dst)) != NodesConnection.end()){//find something
+      if ((it = NodeConnection.find(std::pair<int, int>(src,dst))) != NodeConnection.end()){//find something
 	return it->second;
       }else{
 	return 0.0;
       }
     }else{
-      if (DeviceConnection.find(std::pair<int, int>(src,dst)) != DeviceConnection.end()){//find something
+      if ((it = DeviceConnection.find(std::pair<int, int>(src,dst))) != DeviceConnection.end()){//find something
 	return it->second;
       }else{
 	return 0.0;
