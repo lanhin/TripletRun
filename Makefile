@@ -7,14 +7,17 @@
 CXX = g++
 CXXFLAGS = -O3
 
-triplet: triplet.o device.o
-	 $(CXX) $(CXXFLAGS) -o $@ $^
+triplet: triplet.o device.o graph.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
 triplet.o: src/triplet.cc
-	   $(CXX) $(CXXFLAGS) -c -o $@ $^
+	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
 device.o: src/device.cc
-	  $(CXX) $(CXXFLAGS) -c -o $@ $^
+	$(CXX) $(CXXFLAGS) -c -o $@ $^
+
+graph.o: src/graph.cc
+	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
 .PHONY: all
 all: triplet
