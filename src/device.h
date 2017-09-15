@@ -14,17 +14,29 @@ namespace triplet{
 
   public:
     Device();
-    Device(int id, float compute, int RAM, float bw, int location);
+    Device(int id, float compute, int RAM, float bw, int loc);
     ~Device();
 
-    void SetBusy();
-    void SetFree();
-    
     enum DeviceStatus {
       FREE,
       BUSY,
       UNAVAILABLE
     };
+
+    void SetBusy();
+    void SetFree();
+    void SetId(int id);
+    void SetCompPower(float compute);
+    void SetRAM(int RAM);
+    void SetBw(float bw);
+    void SetLocation(int loc);
+    
+    int GetId();
+    DeviceStatus GetStatus();
+    float GetCompPower();
+    int GetRAM();
+    float GetBw();
+    int GetLocation();
     
     int id_;
     float computing_power;
