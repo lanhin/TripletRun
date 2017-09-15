@@ -1,0 +1,52 @@
+// ==================
+// @2017-09 by lanhin
+// ACSA, USTC
+// lanhin1@gmail.com
+// ==================
+
+#ifndef TRIPLET_DEVICE_H_
+#define TRIPLET_DEVICE_H_
+
+#include <map>
+
+namespace triplet{
+  class Device{
+
+  public:
+    Device();
+    Device(int id, float compute, int RAM, float bw, int location);
+    ~Device();
+
+    void SetBusy();
+    void SetFree();
+    
+    enum DeviceStatus {
+      FREE,
+      BUSY,
+      UNAVAILABLE
+    };
+    
+    int id_;
+    float computing_power;
+    int RAM_size;
+    float bandwidth;
+    DeviceStatus status;
+    int location; //on which node does the device locate
+  };
+
+  class Connections{
+  public:
+    Connections();
+    ~Connections();
+    
+    typedef std::map<std::pair<int, int>, float> connection;
+
+    void NewLink(int src, int dst, float bw, bool BetweenNode=false); //Add a new link to the connection
+    float GetBW(int src, int dst, bool BetweenNode=false); //Get bandwidth
+    
+    connection NodesConnection, DeviceConnection;
+  };
+
+} //namespace triplet
+
+#endif  // TRIPLET_DEVICE_H_
