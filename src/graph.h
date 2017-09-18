@@ -8,6 +8,7 @@
 #define TRIPLET_GRAPH_H_
 
 #include <set>
+#include <map>
 
 namespace triplet{
   class Node{
@@ -29,7 +30,8 @@ namespace triplet{
     float GetDataDmd();
     int GetInNum();
     int GetOutNum();
-    
+
+  protected:
     int id_;
     float computing_demand;
     float data_demand;
@@ -38,6 +40,20 @@ namespace triplet{
   };
 
   class Graph{
+  public:
+    Graph();
+    ~Graph();
+
+    void AddNode(int id);
+    void AddNode(int id, float comDmd, float dataDmd);
+    void AddEdge(int src, int dst);
+    Node GetNode(int id);
+
+    typedef std::map<int,Node> graphmap;
+  protected:
+    graphmap graph_;
+    int numEdge;
+    int numNode;
   };
 }
 
