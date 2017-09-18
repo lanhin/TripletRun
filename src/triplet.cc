@@ -5,6 +5,7 @@
 // ==================
 
 #include "device.h"
+#include "graph.h"
 #include <iostream>
 
 const char* StatusArray[] = {
@@ -24,6 +25,21 @@ void ShowDeviceInfo(triplet::Device dev){
   std::cout<<"==========================="<<std::endl;
 }
 
+void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
+  std::cout<<"========Graph info========="<<std::endl;
+  std::cout<<" Num of nodes: "<<gra.Edges()<<std::endl;
+  std::cout<<" Num of edges: "<<gra.Nodes()<<std::endl;
+  for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter ++){
+    triplet::Node nd = gra.GetNode(*iter);
+    std::cout<<std::endl<<" Node id: "<<*iter<<std::endl;
+    std::cout<<" Node computing demand: "<<nd.GetCompDmd()<<std::endl;
+    std::cout<<" Node data demand: "<<nd.GetDataDmd()<<std::endl;
+    std::cout<<" Node input: "<<nd.GetInNum()<<std::endl;
+    std::cout<<" Node output: "<<nd.GetOutNum()<<std::endl;
+  }
+  std::cout<<"==========================="<<std::endl;
+}
+
 int main(int argc, char *argv[])
 {
   // Create and init devices
@@ -38,7 +54,21 @@ int main(int argc, char *argv[])
   std::cout<<"Link 1:"<<conec.GetBw(2,0)<<std::endl;
   std::cout<<"Link 2:"<<conec.GetBw(2,4,true)<<std::endl;
   std::cout<<"Link 3:"<<conec.GetBw(2,3)<<std::endl;
+
   // Read and init graph
+  triplet::Graph gra;
+  std::set<int> idset;
+  gra.AddNode(0);
+  gra.AddNode(1, 10.0, 2048.0);
+  gra.GetNode(0).SetCompDmd(8.8);
+  gra.GetNode(0).SetDataDmd(6.6);
+
+  gra.AddEdge(0, 1);
+
+  idset.insert(0);
+  idset.insert(1);
+
+  ShowGraphInfo(gra, idset);
 
   // Process the graph
   

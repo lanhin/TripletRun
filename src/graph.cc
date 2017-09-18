@@ -69,7 +69,10 @@ namespace triplet{
   }
 
   // class graph
-  Graph::Graph(){}
+  Graph::Graph(){
+    numEdge = 0;
+    numNode = 0;
+  }
 
   Graph::~Graph(){
     graph_.clear();
@@ -116,12 +119,20 @@ namespace triplet{
     itDst->second.AddInput(src);
   }
 
-  Node Graph::GetNode(int id){
+  Node& Graph::GetNode(int id){
     assert(id >= 0);
     graphmap::iterator it;
     it = graph_.find(id);
     assert(it != graph_.end()); //Error: cannot find node
 
     return it->second;
+  }
+
+  int Graph::Edges(){
+    return numEdge;
+  }
+
+  int Graph::Nodes(){
+    return numNode;
   }
 }
