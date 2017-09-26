@@ -26,6 +26,7 @@ namespace triplet{
   protected:
     Graph global_graph;
     float global_timer;
+    std::set<int> idset;
     std::vector<int> ready_queue; // nodeid
     std::map<int, float> execution_queue; // nodeid -> execution finish time
     std::map<int, int> pending_list; // nodeid -> pending input

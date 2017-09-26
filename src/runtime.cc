@@ -5,6 +5,7 @@
 // ==================
 
 #include "runtime.h"
+#include <cassert>
 
 namespace triplet{
   Runtime::Runtime(){
@@ -24,7 +25,11 @@ namespace triplet{
   }
 
   void Runtime::InitPendingList(){
-    
+    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
+      int pend = global_graph.GetNode(*iter).GetInNum();
+      assert(pend >= 0);
+      pending_list[*iter] = pend;
+    }
   }
 
   void Runtime::StartExecution(){
