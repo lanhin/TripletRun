@@ -28,6 +28,11 @@ namespace triplet{
     id_ = id;
   }
 
+  void Node::SetOccupied(int id){
+    assert(id >= 0);
+    occupied_device = id;
+  }
+
   void Node::SetCompDmd(float demand){
     assert(demand > 0.0);
     computing_demand = demand;
@@ -50,6 +55,10 @@ namespace triplet{
 
   int Node::GetId(){
     return id_;
+  }
+
+  int Node::GetOccupied(){
+    return occupied_device;
   }
 
   float Node::GetCompDmd(){

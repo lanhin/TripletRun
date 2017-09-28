@@ -20,23 +20,27 @@ namespace triplet{
     typedef std::set<int> nodeset;
 
     void SetId(int id);
+    void SetOccupied(int id);
     void SetCompDmd(float demand);
     void SetDataDmd(float demand);
     void AddInput(int inNode);
     void AddOutput(int outNode);
     
     int GetId();
+    int GetOccupied();
     float GetCompDmd();
     float GetDataDmd();
     int GetInNum();
     int GetOutNum();
 
+    nodeset output;
+    
   protected:
     int id_;
+    int occupied_device; // the occupied device id
     float computing_demand;
     float data_demand;
     nodeset input;
-    nodeset output;
   };
 
   class Graph{

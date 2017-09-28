@@ -22,11 +22,18 @@ namespace triplet{
     void InitCluster();
     void InitPendingList();
     void StartExecution();
+    float CalcNearestFinishTime();
+
+    typedef std::map<int, Device> Cluster;
     
   protected:
+    int deviceNum;
+    int deviceInUse;
     Graph global_graph;
+    Cluster TaihuLight;
+    Connections TaihuLightNetwork;
     float global_timer;
-    std::set<int> idset;
+    std::set<int> idset;  //Node id set
     std::vector<int> ready_queue; // nodeid
     std::map<int, float> execution_queue; // nodeid -> execution finish time
     std::map<int, int> pending_list; // nodeid -> pending input
