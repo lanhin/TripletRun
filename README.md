@@ -22,11 +22,11 @@ make clean
 
 ### 1. `graph.json`
 
-`graph.json` is the json file that defines the computing graph. Refer to it as an example.
+[`graph.json`](graph.json) is the json file that defines the computing graph. Refer to it as an example.
 
 ### 2. `cluster.json`
 
-`cluster.json` is the json file that defines the cluster. Refer to it as an example.
+[`cluster.json`](cluster.json) is the json file that defines the cluster. Refer to it as an example.
 
 ## Todo list
 1. Make the runtime really run.
