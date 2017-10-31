@@ -8,6 +8,11 @@ A dataflow runtime simulator.
 make
 ```
 
+To clean the compiling folder:
+```bash
+make clean
+```
+
 ## Run
 ```bash
 ./triplet
@@ -24,3 +29,4 @@ make
 `cluster.json` is the json file that defines the cluster. Refer to it as an example.
 
 ## Todo list
+1. Make the runtime really run.
