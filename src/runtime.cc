@@ -10,6 +10,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <unistd.h>
+
 
 namespace triplet{
   Runtime::Runtime(){
@@ -43,6 +45,12 @@ namespace triplet{
     Json::CharReaderBuilder reader;
     std::string errs;
     Json::Value root;
+
+    // check if the json file exists
+    if (access(graphFile, F_OK) != 0){
+      std::cout<<"The json file "<<graphFile<<" doesn't exist!"<<std::endl;
+      return;
+    }
 
     std::ifstream jsondoc(graphFile, std::ifstream::binary);
 
@@ -79,7 +87,19 @@ namespace triplet{
       global_graph.AddEdge(src1, dst1);
     }
 
-    // TODO: Check the constructed graph
+    // Check the constructed graph
+    for (int index = 0; index < root["nodes"].size(); index++){
+      std::string id = root["nodes"][index].get("id", "-1").asString();
+      int id1 = std::stoi(id);
+
+      triplet::Node nd = global_graph.GetNode(id1);
+      std::cout<<std::endl<<" Node id: "<<id1<<std::endl;
+      std::cout<<" Node computing demand: "<<nd.GetCompDmd()<<std::endl;
+      std::cout<<" Node data demand: "<<nd.GetDataDmd()<<std::endl;
+      std::cout<<" Node input: "<<nd.GetInNum()<<std::endl;
+      std::cout<<" Node output: "<<nd.GetOutNum()<<std::endl;
+      std::cout<<"==========================="<<std::endl;
+    }
   }
 
   /**
@@ -90,6 +110,12 @@ namespace triplet{
     std::string errs;
     Json::Value root;
 
+    // check if the json file exists
+    if (access(clusterFile, F_OK) != 0){
+      std::cout<<"The json file "<<clusterFile<<" doesn't exist!"<<std::endl;
+      return;
+    }
+    
     std::ifstream jsondoc(clusterFile, std::ifstream::binary);
 
     bool parsingStatusOK = Json::parseFromStream(reader, jsondoc, &root, &errs);
@@ -137,6 +163,8 @@ namespace triplet{
       std::cout<<src1<<' '<<dst1<<' '<<bw1<<' '<<btNodes1<<std::endl;
       TaihuLightNetwork.NewLink(src1, dst1, bw1, btNodes1);
     }
+
+    //TODO: Check the constructed cluster
 
   }
 

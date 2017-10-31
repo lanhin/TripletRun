@@ -110,6 +110,9 @@ namespace triplet{
     
   }
 
+  /** Note: if two devices' bandwidth is less than a threshold(like 0.01),
+      the caller should re-call this function to get the nodes' bandwith.
+   */
   float Connections::GetBw(int src, int dst, bool BetweenNode){ //Get bandwidth
     assert(src >= 0);
     assert(dst >= 0);
@@ -130,7 +133,6 @@ namespace triplet{
       if ((it = DeviceConnection.find(std::pair<int, int>(src,dst))) != DeviceConnection.end()){//find something
 	return it->second;
       }else{
-	// TODO: More operations here
 	return 0.0;
       }
 
