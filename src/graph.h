@@ -54,8 +54,9 @@ namespace triplet{
     Node& GetNode(int id);
     int Edges();
     int Nodes();
+    void Clear();
 
-    typedef std::map<int,Node> graphmap;
+    typedef std::map<int,Node*> graphmap;
   protected:
     graphmap graph_;
     int numEdge;

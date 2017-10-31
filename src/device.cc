@@ -130,10 +130,16 @@ namespace triplet{
       if ((it = DeviceConnection.find(std::pair<int, int>(src,dst))) != DeviceConnection.end()){//find something
 	return it->second;
       }else{
+	// TODO: More operations here
 	return 0.0;
       }
 
     }
+  }
+
+  void Connections::Clear(){
+    NodeConnection.clear();
+    DeviceConnection.clear();
   }
 
 } // namespace triplet

@@ -18,13 +18,14 @@ namespace triplet{
     Runtime();
     ~Runtime();
 
-    void InitGraph();
-    void InitCluster();
+    void InitGraph(const char * graphFile);
+    void InitCluster(const char * clusterFile);
     void InitPendingList();
     void StartExecution();
     float CalcNearestFinishTime();
+    void SimulationReport();
 
-    typedef std::map<int, Device> Cluster;
+    typedef std::map<int, Device*> Cluster;
     
   protected:
     int deviceNum;

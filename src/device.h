@@ -55,6 +55,7 @@ namespace triplet{
 
     void NewLink(int src, int dst, float bw, bool BetweenNode=false); //Add a new link to the connection
     float GetBw(int src, int dst, bool BetweenNode=false); //Get bandwidth
+    void Clear(); //clean all the connections
     
     connection NodeConnection;
     connection DeviceConnection;

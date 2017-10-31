@@ -6,6 +6,7 @@
 
 #include "device.h"
 #include "graph.h"
+#include "runtime.h"
 #include <iostream>
 
 const char* StatusArray[] = {
@@ -71,6 +72,10 @@ int main(int argc, char *argv[])
   ShowGraphInfo(gra, idset);
 
   // Process the graph
+
+  triplet::Runtime rt;
+  rt.InitGraph("graph.json");
+  rt.InitCluster("cluster.json");
   
   return 0;
 }

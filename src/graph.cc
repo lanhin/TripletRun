@@ -6,6 +6,7 @@
 
 #include "graph.h"
 #include <cassert>
+#include <iostream>
 
 namespace triplet{
   // class Node
@@ -95,9 +96,9 @@ namespace triplet{
     graphmap::iterator it;
     it = graph_.find(id);
     assert(it == graph_.end()); //Error: the node has already created
-    
-    Node node;
-    node.SetId(id);
+
+    Node * node = new Node();
+    node->SetId(id);
     graph_[id] = node;
   }
 
@@ -107,10 +108,10 @@ namespace triplet{
     it = graph_.find(id);
     assert(it == graph_.end()); //Error: the node has already created
     
-    Node node;
-    node.SetId(id);
-    node.SetCompDmd(comDmd);
-    node.SetDataDmd(dataDmd);
+    Node * node = new Node();
+    node->SetId(id);
+    node->SetCompDmd(comDmd);
+    node->SetDataDmd(dataDmd);
     graph_[id] = node;
   }
 
@@ -124,8 +125,8 @@ namespace triplet{
     assert(itSrc != graph_.end());
     assert(itDst != graph_.end());
 
-    itSrc->second.AddOutput(dst);
-    itDst->second.AddInput(src);
+    itSrc->second->AddOutput(dst);
+    itDst->second->AddInput(src);
   }
 
   Node& Graph::GetNode(int id){
@@ -134,7 +135,7 @@ namespace triplet{
     it = graph_.find(id);
     assert(it != graph_.end()); //Error: cannot find node
 
-    return it->second;
+    return *(it->second);
   }
 
   int Graph::Edges(){
@@ -143,5 +144,16 @@ namespace triplet{
 
   int Graph::Nodes(){
     return numNode;
+  }
+
+  void Graph::Clear(){
+    graphmap::iterator it = graph_.begin();
+    for (; it != graph_.end(); it++){
+      //std::cout<<"Deleting "<<it->second->GetId()<<std::endl;
+      delete it->second;
+    }
+    graph_.clear();
+    numEdge = 0;
+    numNode = 0;
   }
 }
