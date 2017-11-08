@@ -60,6 +60,20 @@ namespace triplet{
     return id_;
   }
 
+  bool Device::IsFree(){
+    if (status == FREE){
+      return true;
+    }
+    return false;
+  }
+
+  bool Device::IsBusy(){
+    if (status == BUSY){
+      return true;
+    }
+    return false;
+  }
+
   Device::DeviceStatus Device::GetStatus(){
     return status;
   }

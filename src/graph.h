@@ -51,7 +51,7 @@ namespace triplet{
     void AddNode(int id);
     void AddNode(int id, float comDmd, float dataDmd);
     void AddEdge(int src, int dst);
-    Node& GetNode(int id);
+    Node* GetNode(int id);
     int Edges();
     int Nodes();
     void Clear();

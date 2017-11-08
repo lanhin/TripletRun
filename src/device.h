@@ -32,6 +32,8 @@ namespace triplet{
     void SetLocation(int loc);
     
     int GetId();
+    bool IsFree();
+    bool IsBusy();
     DeviceStatus GetStatus();
     float GetCompPower();
     int GetRAM();

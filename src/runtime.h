@@ -20,9 +20,10 @@ namespace triplet{
 
     void InitGraph(const char * graphFile);
     void InitCluster(const char * clusterFile);
-    void InitPendingList();
-    void StartExecution();
+    void InitRuntime();
+    void Execution();
     float CalcNearestFinishTime();
+    float CalcExecutionTime(Node nd, Device dev);
     void SimulationReport();
 
     typedef std::map<int, Device*> Cluster;

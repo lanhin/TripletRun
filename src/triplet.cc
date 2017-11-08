@@ -31,12 +31,13 @@ void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
   std::cout<<" Num of nodes: "<<gra.Edges()<<std::endl;
   std::cout<<" Num of edges: "<<gra.Nodes()<<std::endl;
   for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter ++){
-    triplet::Node nd = gra.GetNode(*iter);
+    triplet::Node* nd = gra.GetNode(*iter);
     std::cout<<std::endl<<" Node id: "<<*iter<<std::endl;
-    std::cout<<" Node computing demand: "<<nd.GetCompDmd()<<std::endl;
-    std::cout<<" Node data demand: "<<nd.GetDataDmd()<<std::endl;
-    std::cout<<" Node input: "<<nd.GetInNum()<<std::endl;
-    std::cout<<" Node output: "<<nd.GetOutNum()<<std::endl;
+    std::cout<<" Node computing demand: "<<nd->GetCompDmd()<<std::endl;
+    std::cout<<" Node data demand: "<<nd->GetDataDmd()<<std::endl;
+    std::cout<<" Node occupied: "<<nd->GetOccupied()<<std::endl;
+    std::cout<<" Node input: "<<nd->GetInNum()<<std::endl;
+    std::cout<<" Node output: "<<nd->GetOutNum()<<std::endl;
   }
   std::cout<<"==========================="<<std::endl;
 }
@@ -46,7 +47,7 @@ int main(int argc, char *argv[])
   // Create and init devices
   triplet::Device deva(0, 1.0, 2048, 96.0, 0);
 
-  ShowDeviceInfo(deva);
+  //ShowDeviceInfo(deva);
 
   triplet::Connections conec;
   conec.NewLink(0, 2, 20);
@@ -61,8 +62,8 @@ int main(int argc, char *argv[])
   std::set<int> idset;
   gra.AddNode(0);
   gra.AddNode(1, 10.0, 2048.0);
-  gra.GetNode(0).SetCompDmd(8.8);
-  gra.GetNode(0).SetDataDmd(6.6);
+  gra.GetNode(0)->SetCompDmd(8.8);
+  gra.GetNode(0)->SetDataDmd(6.6);
 
   gra.AddEdge(0, 1);
 
@@ -76,6 +77,8 @@ int main(int argc, char *argv[])
   triplet::Runtime rt;
   rt.InitGraph("graph.json");
   rt.InitCluster("cluster.json");
+  rt.InitRuntime();
+  rt.Execution();
   
   return 0;
 }

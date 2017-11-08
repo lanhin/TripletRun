@@ -100,6 +100,7 @@ namespace triplet{
     Node * node = new Node();
     node->SetId(id);
     graph_[id] = node;
+    numNode++;
   }
 
   void Graph::AddNode(int id, float comDmd, float dataDmd){
@@ -113,6 +114,7 @@ namespace triplet{
     node->SetCompDmd(comDmd);
     node->SetDataDmd(dataDmd);
     graph_[id] = node;
+    numNode++;
   }
 
   void Graph::AddEdge(int src, int dst){
@@ -127,15 +129,17 @@ namespace triplet{
 
     itSrc->second->AddOutput(dst);
     itDst->second->AddInput(src);
+
+    numEdge++;
   }
 
-  Node& Graph::GetNode(int id){
+  Node* Graph::GetNode(int id){
     assert(id >= 0);
     graphmap::iterator it;
     it = graph_.find(id);
     assert(it != graph_.end()); //Error: cannot find node
 
-    return *(it->second);
+    return it->second;
   }
 
   int Graph::Edges(){
