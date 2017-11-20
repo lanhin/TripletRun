@@ -13,10 +13,11 @@ namespace triplet{
   Device::Device()
     : id_(-1),
       status(UNAVAILABLE),
-      location(-1) {}
+      location(-1),
+      occupied_time(0.0) {}
 
   Device::Device(int id, float compute, int RAM, float bw, int loc)
-    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc){
+    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),occupied_time(0.0){
     status = FREE;}
 
   Device::~Device(){}
@@ -56,6 +57,12 @@ namespace triplet{
     location = loc;
   }
 
+  void Device::IncreaseRuntime(float ExeTime){
+    assert(occupied_time >= 0.0);
+    assert(ExeTime >= 0.0);
+    occupied_time += ExeTime;
+  }
+
   int Device::GetId(){
     return id_;
   }
@@ -92,6 +99,11 @@ namespace triplet{
 
   int Device::GetLocation(){
     return location;
+  }
+
+  float Device::GetRuntime(){
+    assert(occupied_time >= 0.0);
+    return occupied_time;
   }
 
   // The Connections class

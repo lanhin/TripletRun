@@ -255,6 +255,7 @@ namespace triplet{
 	std::cout<<"Device occupy: "<<nd->GetId()<<" occupys device "<<nd->GetOccupied()<<std::endl;
 	float execution_time = CalcExecutionTime(*nd, *(it->second));
 	execution_queue.emplace(task_node_id, (execution_time+global_timer));
+	(it->second)->IncreaseRuntime(execution_time);
 
 	for (auto& x: execution_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
@@ -313,6 +314,20 @@ namespace triplet{
 
   void Runtime::SimulationReport(){
     // TODO: implementation
+    std::cout<<"****** Simulation Report ******"<<std::endl;
     std::cout<<"Global timer:"<<global_timer<<std::endl;
+
+    int devId;
+    float occupyTime;
+    Cluster::iterator it = TaihuLight.begin();
+    for(; it != TaihuLight.end(); it++){
+      devId = it->first;
+      occupyTime = (it->second)->GetRuntime();
+      assert(devId >= 0);
+      assert(occupyTime >= 0.0);
+
+      std::cout<<"Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<std::endl;
+    }
+
   }
 }
