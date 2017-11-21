@@ -11,12 +11,14 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1){}
-  Node::Node(int id, float compDmd, float dataDmd){
+    :id_(-1), output_data_size(-1.0){}
+  Node::Node(int id, float compDmd, float dataDmd, float output){
     id_ = id;
     computing_demand = compDmd;
     data_demand = dataDmd;
+    output_data_size = output;
   }
+
   Node::~Node(){
     input.clear();
     output.clear();
@@ -42,6 +44,11 @@ namespace triplet{
   void Node::SetDataDmd(float demand){
     assert(demand > 0.0);
     data_demand = demand;
+  }
+
+  void Node::SetOutputSize(float output){
+    assert(output >= 0.0);
+    output_data_size = output;
   }
 
   void Node::AddInput(int inNode){
@@ -76,6 +83,13 @@ namespace triplet{
 
   int Node::GetOutNum(){
     return output.size();
+  }
+
+  float Node::GetOutputSize(){
+    if(output_data_size < 0.0)
+      return data_demand;
+    else
+      return output_data_size;
   }
 
   // class graph

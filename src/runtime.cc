@@ -207,6 +207,9 @@ namespace triplet{
 	  TaihuLight[devId]->SetFree();
 	  deviceInUse --;
 
+	  //fill running_history map
+	  running_history[nd->GetId()] = devId;
+
 	  //std::cout<<"Update pending list.."<<std::endl;
 	  // update pending list and ready queue
 	  std::set<int>::iterator ndit;
@@ -239,10 +242,13 @@ namespace triplet{
 	ready_queue.erase(ready_queue.begin());
 	Node* nd = global_graph.GetNode(task_node_id);
 
+	// TODO: Get the node's input data location
+	
+	
 	//2.2 choose a free device to execute the task (default: choose the first free device)
 	Cluster::iterator it = TaihuLight.begin();
 	for(; it != TaihuLight.end(); it++){
-	  if ((it->second)->IsFree()){
+	  if ((it->second)->IsFree() && ((nd->GetDataDmd())<=(it->second)->GetRAM())){
 	    break;
 	  }
 	}
@@ -299,17 +305,49 @@ namespace triplet{
     }
   }
 
+  // TODO: split the calculation and transmission time
   float Runtime::CalcExecutionTime(Node nd, Device dev){
     // TODO: More accurate exection time calculation
-    float calc_time, data_time;
+    float calc_time, data_time, data_transmission_time=0.0;
 
     //1. calculation time
     calc_time = nd.GetCompDmd() / dev.GetCompPower();
 
-    //2. data transfer time
+    //2. data access time
     data_time = nd.GetDataDmd() / dev.GetBw();
 
-    return std::max(calc_time,data_time);
+    //3. data transmission time
+    float total_data_output = 0.0;
+    for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
+      Node* input_nd = global_graph.GetNode(*iter);
+      total_data_output += input_nd->GetOutputSize();
+    }
+
+    float network_bandwith = 0.0;
+    float data_trans_ratio = 1.0;
+    if( total_data_output > nd.GetDataDmd() ){
+      data_trans_ratio = nd.GetDataDmd() / total_data_output;
+    }
+    for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
+      Node* input_nd = global_graph.GetNode(*iter);
+      int input_dev_id = running_history[*iter];
+
+      // On the same device, ignore the data transmission time
+      if (input_dev_id == dev.GetId())
+	continue;
+
+      // Get the bandwith between the two devices
+      // TODO: Define the threshold
+      if ((network_bandwith = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= 0.001){
+	network_bandwith = TaihuLightNetwork.GetBw(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(),  true);
+      }
+      
+      data_transmission_time = std::max((input_nd->GetOutputSize() * data_trans_ratio) / network_bandwith, data_transmission_time);
+    }
+
+    std::cout<<"Data transmission time: "<<data_transmission_time<<std::endl;
+
+    return std::max(calc_time, data_time) + data_transmission_time;
   }
 
   void Runtime::SimulationReport(){

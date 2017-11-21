@@ -37,6 +37,7 @@ namespace triplet{
     float global_timer;
     std::set<int> idset;  //Node id set
     std::vector<int> ready_queue; // nodeid
+    std::map<int, int> running_history; //nodeid -> deviceid
     std::map<int, float> execution_queue; // nodeid -> execution finish time
     std::map<int, int> pending_list; // nodeid -> pending input
   };
