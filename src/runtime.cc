@@ -309,7 +309,7 @@ namespace triplet{
     //2. data transfer time
     data_time = nd.GetDataDmd() / dev.GetBw();
 
-    return (calc_time + data_time);
+    return std::max(calc_time,data_time);
   }
 
   void Runtime::SimulationReport(){
