@@ -5,6 +5,7 @@
 // ==================
 
 #include "runtime.h"
+#include "constants.h"
 #include "json/json.h"
 #include <cassert>
 #include <iostream>
@@ -196,8 +197,7 @@ namespace triplet{
       //std::cout<<"stage 1"<<std::endl;
       std::map<int, float>::iterator it = execution_queue.begin();
       for (; it != execution_queue.end(); it++){
-	// TODO: float compare
-	if (it->second <= global_timer){
+	if (it->second <= (global_timer + ZERO_POSITIVE)){
 	  std::cout<<"Node "<<it->first<<" finished execution."<<std::endl;
 	  
 	  // Set free the corresponding device
@@ -254,7 +254,9 @@ namespace triplet{
 	}
 
 	//2.3 do the schedule: busy the device, calc the finish time and add the task into execution_queue
-	// TODO: If IT is the end of TaihuLight, arise error!
+	// TODO: add more operations when IT is the end of TaihuLight
+	assert(it != TaihuLight.end());
+
 	(it->second)->SetBusy();
 	deviceInUse ++;
 	nd->SetOccupied(it->first);
@@ -289,15 +291,13 @@ namespace triplet{
     float NearestTime = -1.0;
     std::map<int, float>::iterator ite;
     for (ite = execution_queue.begin(); ite != execution_queue.end(); ite++){
-      // TODO: float compare
-      if (NearestTime > ite->second || NearestTime < 0.0){
+      if (NearestTime > ite->second || NearestTime < ZERO_NEGATIVE){
 	NearestTime = ite->second;
       }
     }
 
     std::cout<<"****Nearest Time:"<<NearestTime<<std::endl;
-    // TODO: float compare
-    if (NearestTime > 0.0){
+    if (NearestTime > ZERO_POSITIVE){
       return NearestTime;
     }
     else{
@@ -337,8 +337,7 @@ namespace triplet{
 	continue;
 
       // Get the bandwith between the two devices
-      // TODO: Define the threshold
-      if ((network_bandwith = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= 0.001){
+      if ((network_bandwith = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= BW_ZERO){
 	network_bandwith = TaihuLightNetwork.GetBw(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(),  true);
       }
       

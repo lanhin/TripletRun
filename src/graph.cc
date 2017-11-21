@@ -5,6 +5,7 @@
 // ==================
 
 #include "graph.h"
+#include "constants.h"
 #include <cassert>
 #include <iostream>
 
@@ -86,7 +87,7 @@ namespace triplet{
   }
 
   float Node::GetOutputSize(){
-    if(output_data_size < 0.0)
+    if(output_data_size < ZERO_POSITIVE)
       return data_demand;
     else
       return output_data_size;
