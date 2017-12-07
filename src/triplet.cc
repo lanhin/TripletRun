@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
   rt.InitGraph("graph.json");
   rt.InitCluster("cluster.json");
   rt.InitRuntime();
-  rt.Execution();
+  rt.Execute();
   
   return 0;
 }

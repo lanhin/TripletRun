@@ -189,7 +189,7 @@ namespace triplet{
     }
   }
 
-  void Runtime::Execution(){
+  void Runtime::Execute(){
     // execute until all three queues/lists are empty
     while (!ready_queue.empty() || !execution_queue.empty()) {
 

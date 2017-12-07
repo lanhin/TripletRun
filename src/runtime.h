@@ -21,7 +21,7 @@ namespace triplet{
     void InitGraph(const char * graphFile);
     void InitCluster(const char * clusterFile);
     void InitRuntime();
-    void Execution();
+    void Execute();
     float CalcNearestFinishTime();
     float CalcExecutionTime(Node nd, Device dev);
     void SimulationReport();
