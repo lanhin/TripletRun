@@ -15,10 +15,12 @@
 
 
 namespace triplet{
+  //Class Runtime
   Runtime::Runtime(){
     global_timer = 0.0;
     deviceNum = 0;
     deviceInUse = 0;
+    //blockIdCounter = 0;
   }
 
   Runtime::~Runtime(){
@@ -191,11 +193,28 @@ namespace triplet{
 
   void Runtime::Execute(){
     // execute until all three queues/lists are empty
-    while (!ready_queue.empty() || !execution_queue.empty()) {
+    while (!ready_queue.empty() || !execution_queue.empty() || !block_free_queue.empty()) {
+      /** 0. if a memory block's refer number can be decreased
+          decrease it and check if we need to free the block. */
+      std::map<int, float>::iterator it = block_free_queue.begin();
+      for (; it != block_free_queue.end(); it++){
+	if (it->second <= (global_timer + ZERO_POSITIVE)){
+	  MemoryBlock * blk_pointer = BlocksMap[it->first];
+	  if ( (blk_pointer->DecRefers()) <= 0 ){ // do the free
+	    blk_pointer->DoFree(TaihuLight);
+
+	    //Remove the block entry from the BlockMap and block_free_queue
+	    delete BlocksMap[it->first];
+	    BlocksMap.erase(it->first);
+	    block_free_queue.erase(it);
+	  }
+	}
+      }
+
 
       // 1. if a task finished execution, update pending_list, cluster and ready_queue
       //std::cout<<"stage 1"<<std::endl;
-      std::map<int, float>::iterator it = execution_queue.begin();
+      it = execution_queue.begin();
       for (; it != execution_queue.end(); it++){
 	if (it->second <= (global_timer + ZERO_POSITIVE)){
 	  std::cout<<"Node "<<it->first<<" finished execution."<<std::endl;
@@ -227,6 +246,7 @@ namespace triplet{
 
 	  // erase the task from execution_queue
 	  execution_queue.erase(it);
+	  // Output the execution_queue to check its contents
 	  for (auto& x: execution_queue)
 	    std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
 	}
@@ -248,12 +268,13 @@ namespace triplet{
 	//2.2 choose a free device to execute the task (default: choose the first free device)
 	Cluster::iterator it = TaihuLight.begin();
 	for(; it != TaihuLight.end(); it++){
-	  if ((it->second)->IsFree() && ((nd->GetDataDmd())<=(it->second)->GetRAM())){
+	  if ((it->second)->IsFree() && ((nd->GetDataDmd())<=(it->second)->GetFreeRAM())){
 	    break;
 	  }
 	}
 
-	//2.3 do the schedule: busy the device, calc the finish time and add the task into execution_queue
+	//2.3 do the schedule: busy the device, calc the finish time, allocate device memory and add the task into execution_queue
+
 	// TODO: add more operations when IT is the end of TaihuLight
 	assert(it != TaihuLight.end());
 
@@ -261,9 +282,21 @@ namespace triplet{
 	deviceInUse ++;
 	nd->SetOccupied(it->first);
 	std::cout<<"Device occupy: "<<nd->GetId()<<" occupys device "<<nd->GetOccupied()<<std::endl;
+	//
+	float transmission_time = CalcTransmissionTime(*nd, *(it->second));
 	float execution_time = CalcExecutionTime(*nd, *(it->second));
-	execution_queue.emplace(task_node_id, (execution_time+global_timer));
-	(it->second)->IncreaseRuntime(execution_time);
+
+	//Manage memory blocks data structures
+	//blockIdCounter ++;
+	int block_id = nd->GetId();
+	MemoryBlock* block = new MemoryBlock(block_id, it->first, nd->GetDataDmd(), nd->GetOutNum());
+	block->DoAlloc(TaihuLight);
+	// TODO: check if the block id already exists, which is illegal
+	BlocksMap[block_id] = block;
+
+	block_free_queue.emplace(block_id, (transmission_time + global_timer));
+	execution_queue.emplace(task_node_id, (transmission_time + execution_time + global_timer));
+	(it->second)->IncreaseRuntime(execution_time); // TODO: add transmission here as well?
 
 	for (auto& x: execution_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
@@ -305,18 +338,10 @@ namespace triplet{
     }
   }
 
-  // TODO: split the calculation and transmission time
-  float Runtime::CalcExecutionTime(Node nd, Device dev){
-    // TODO: More accurate exection time calculation
-    float calc_time, data_time, data_transmission_time=0.0;
+  float Runtime::CalcTransmissionTime(Node nd, Device dev){
+    float data_transmission_time=0.0;
 
-    //1. calculation time
-    calc_time = nd.GetCompDmd() / dev.GetCompPower();
-
-    //2. data access time
-    data_time = nd.GetDataDmd() / dev.GetBw();
-
-    //3. data transmission time
+    // 1. data transmission time, splited from CalcExecutionTime()
     float total_data_output = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
@@ -346,7 +371,21 @@ namespace triplet{
 
     std::cout<<"Data transmission time: "<<data_transmission_time<<std::endl;
 
-    return std::max(calc_time, data_time) + data_transmission_time;
+    return data_transmission_time;
+  }
+
+  // TODO: split the calculation and transmission time
+  float Runtime::CalcExecutionTime(Node nd, Device dev){
+    // TODO: More accurate exection time calculation
+    float calc_time, data_time;
+
+    //1. calculation time
+    calc_time = nd.GetCompDmd() / dev.GetCompPower();
+
+    //2. data access time
+    data_time = nd.GetDataDmd() / dev.GetBw();
+
+    return std::max(calc_time, data_time);
   }
 
   void Runtime::SimulationReport(){
@@ -366,5 +405,50 @@ namespace triplet{
       std::cout<<"Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<std::endl;
     }
 
+  }
+
+  // Class MemoryBlock
+  MemoryBlock::MemoryBlock()
+    :BlockId(-1),
+     DeviceId(-1),
+     BlockSize(0),
+     ReferNum(0){}
+
+  MemoryBlock::MemoryBlock(int id, int devid, int size, int refers)
+    :BlockId(id),
+     DeviceId(devid),
+     BlockSize(size),
+     ReferNum(refers){}
+
+  MemoryBlock::~MemoryBlock(){}
+
+  // Decrease the refer number and return the decreased number
+  int MemoryBlock::DecRefers(int number){
+    ReferNum -= number;
+    ReferNum = std::max(0, ReferNum);
+
+    return ReferNum;
+  }
+
+  void MemoryBlock::DoAlloc(Cluster TaihuLight){
+    assert(BlockId >= 0);
+    assert(DeviceId >= 0);
+    assert(BlockSize > 0);
+    assert(ReferNum >= 0); // The sink node has ReferNum=0
+
+    TaihuLight[DeviceId]->MemMalloc(BlockSize);
+  }
+
+  void MemoryBlock::DoFree(Cluster TaihuLight){
+    assert(DeviceId >= 0);
+    assert(BlockSize >= 0);
+    assert(ReferNum <= 0);
+
+    TaihuLight[DeviceId]->MemFree(BlockSize);
+  }
+
+  int MemoryBlock::GetRefers(){
+    assert(ReferNum >= 0);
+    return ReferNum;
   }
 }

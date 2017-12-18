@@ -31,6 +31,8 @@ namespace triplet{
     void SetBw(float bw);
     void SetLocation(int loc);
     void IncreaseRuntime(float ExeTime);
+    void MemMalloc(int size); // Malloc a memory block
+    void MemFree(int size); // Free a memory block
     
     int GetId();
     bool IsFree();
@@ -38,6 +40,7 @@ namespace triplet{
     DeviceStatus GetStatus();
     float GetCompPower();
     int GetRAM();
+    int GetFreeRAM();
     float GetBw();
     int GetLocation();
     float GetRuntime();
@@ -45,6 +48,7 @@ namespace triplet{
     int id_;
     float computing_power;
     int RAM_size;
+    int Allocated_RAM;  // number of RAM size in use
     float bandwidth;
     DeviceStatus status;
     int location; //on which node does the device locate
