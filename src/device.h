@@ -32,7 +32,7 @@ namespace triplet{
     void SetLocation(int loc);
     void IncreaseTransTime(float TransTime);
     void IncreaseRunTime(float ExeTime);
-    void MemMalloc(int size); // Malloc a memory block
+    void MemAlloc(int size); // Malloc a memory block
     void MemFree(int size); // Free a memory block
     
     int GetId();

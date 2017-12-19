@@ -72,14 +72,22 @@ namespace triplet{
     execution_time += ExeTime;
   }
 
-  void Device::MemMalloc(int size){
+  void Device::MemAlloc(int size){
     assert(Allocated_RAM + size <= RAM_size + ZERO_POSITIVE);
     Allocated_RAM += size;
+
+#ifdef DEBUG
+    std::cout<<"----MemAlloc on device "<<id_<<", allocated RAM: "<<Allocated_RAM<<" MB, total RAM: "<<RAM_size<<" MB."<<std::endl;
+#endif
   }
 
   void Device::MemFree(int size){
     assert(size <= Allocated_RAM + ZERO_POSITIVE);
     Allocated_RAM = std::max(0, Allocated_RAM - size);
+
+#ifdef DEBUG
+    std::cout<<"----MemFree on device "<<id_<<", allocated RAM: "<<Allocated_RAM<<" MB, total RAM: "<<RAM_size<<" MB."<<std::endl;
+#endif
   }
 
   int Device::GetId(){

@@ -62,7 +62,8 @@ namespace triplet{
     std::vector<int> ready_queue; // nodeid
     std::map<int, int> running_history; //nodeid -> deviceid
     std::map<int, float> execution_queue; // nodeid -> execution finish time
-    std::map<int, float> block_free_queue; // blockid -> refer decrease time
+    //std::map<int, float> block_free_queue; // blockid -> refer decrease time
+    std::vector<std::pair<int,float>>block_free_queue;
     std::map<int, int> pending_list; // nodeid -> pending input
     std::map<int, MemoryBlock*> BlocksMap; // Memory blocks pool, blockid -> memory block
   };// Class Runtime

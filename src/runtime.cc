@@ -196,33 +196,38 @@ namespace triplet{
     while (!ready_queue.empty() || !execution_queue.empty() || !block_free_queue.empty()) {
       /** 0. if a memory block's refer number can be decreased
           decrease it and check if we need to free the block. */
-      std::map<int, float>::iterator it = block_free_queue.begin();
-      for (; it != block_free_queue.end(); it++){
-	if (it->second <= (global_timer + ZERO_POSITIVE)){
-	  MemoryBlock * blk_pointer = BlocksMap[it->first];
+      //std::map<int, float>::iterator it = block_free_queue.begin();
+      //      for (; it != block_free_queue.end(); it++){
+      for (int i=0; i<block_free_queue.size(); i++){
+	auto& it = block_free_queue[i];
+	if (it.second <= (global_timer + ZERO_POSITIVE)){
+	  MemoryBlock * blk_pointer = BlocksMap[it.first];
 	  if ( (blk_pointer->DecRefers()) <= 0 ){ // do the free
 	    blk_pointer->DoFree(TaihuLight);
 
 	    //Remove the block entry from the BlockMap and block_free_queue
-	    delete BlocksMap[it->first];
-	    BlocksMap.erase(it->first);
-	    block_free_queue.erase(it);
+	    delete BlocksMap[it.first];
+	    BlocksMap.erase(it.first);
 	  }
+	  // Erase the block free tag from block_free_queue
+	  // once the time reached
+	  block_free_queue.erase(block_free_queue.begin()+i);
 	}
       }
 
 
       // 1. if a task finished execution, update pending_list, cluster and ready_queue
       //std::cout<<"stage 1"<<std::endl;
-      it = execution_queue.begin();
+      std::map<int, float>::iterator it = execution_queue.begin();
       for (; it != execution_queue.end(); it++){
 	if (it->second <= (global_timer + ZERO_POSITIVE)){
-	  std::cout<<"Node "<<it->first<<" finished execution."<<std::endl;
 	  
 	  // Set free the corresponding device
 	  Node* nd = global_graph.GetNode(it->first);
 	  int devId = nd->GetOccupied();
-	  std::cout<<"Node "<<it->first<<" used device "<<devId<<std::endl;
+#ifdef DEBUG
+	  std::cout<<"Node "<<it->first<<" finished execution. It used device "<<devId<<std::endl;
+#endif
 	  TaihuLight[devId]->SetFree();
 	  deviceInUse --;
 
@@ -235,7 +240,9 @@ namespace triplet{
 	  for (ndit = nd->output.begin(); ndit != nd->output.end(); ndit ++){
 	    int pendingNum = pending_list[*ndit];
 	    pendingNum --;
+#ifdef DEBUG
 	    std::cout<<"Node: "<<*ndit<<", pending num:"<<pendingNum<<std::endl;
+#endif
 	    assert(pendingNum >= 0);
 	    pending_list[*ndit] = pendingNum;
 
@@ -246,9 +253,13 @@ namespace triplet{
 
 	  // erase the task from execution_queue
 	  execution_queue.erase(it);
+
+#ifdef DEBUG
 	  // Output the execution_queue to check its contents
+	  std::cout<<"Execution queue: "<<std::endl;
 	  for (auto& x: execution_queue)
 	    std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
+#endif
 	}
       }
       
@@ -281,7 +292,7 @@ namespace triplet{
 	(it->second)->SetBusy();
 	deviceInUse ++;
 	nd->SetOccupied(it->first);
-	std::cout<<"Device occupy: "<<nd->GetId()<<" occupys device "<<nd->GetOccupied()<<std::endl;
+	//std::cout<<"Device occupy: "<<nd->GetId()<<" occupys device "<<nd->GetOccupied()<<std::endl;
 	//
 	float transmission_time = CalcTransmissionTime(*nd, *(it->second));
 	float execution_time = CalcExecutionTime(*nd, *(it->second));
@@ -294,19 +305,28 @@ namespace triplet{
 	// TODO: check if the block id already exists, which is illegal
 	BlocksMap[block_id] = block;
 
-	block_free_queue.emplace(block_id, (transmission_time + global_timer));
+	for (std::set<int>::iterator iter = nd->input.begin(); iter != nd->input.end(); iter ++){
+	  Node* input_nd = global_graph.GetNode(*iter);
+	  block_free_queue.push_back(std::pair<int, float>(input_nd->GetId(), (transmission_time + global_timer)));
+	}
 	execution_queue.emplace(task_node_id, (transmission_time + execution_time + global_timer));
 
 	(it->second)->IncreaseTransTime(transmission_time);
 	(it->second)->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
+#ifdef DEBUG
+	std::cout<<"Execution queue: "<<std::endl;
 	for (auto& x: execution_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
 
+	std::cout<<"Block free queue: "<<std::endl;
+	for (auto& x: block_free_queue)
+	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
 
 	//Debug
 	std::cout<<"Schedule node "<<task_node_id<<" onto Device "<<it->first;
-	std::cout<<", expected execution time = "<<execution_time<<"s."<<std::endl;
+	std::cout<<", global time = "<<global_timer<<" s, expected transmission time = "<<transmission_time<<" s, execution time = "<<execution_time<<" s."<<std::endl;
+#endif
       }
 
       // 3. if ready queue is empty or all devices are busy, update global_timer to the nearest finish time
@@ -332,9 +352,10 @@ namespace triplet{
       }
     }
 
-    for (ite = block_free_queue.begin(); ite != block_free_queue.end(); ite++){
-      if (NearestTime > ite->second  ||  NearestTime < ZERO_NEGATIVE){
-	NearestTime = ite->second;
+    //for (ite = block_free_queue.begin(); ite != block_free_queue.end(); ite++){
+    for (auto& ite: block_free_queue){
+      if (NearestTime > ite.second  ||  NearestTime < ZERO_NEGATIVE){
+	NearestTime = ite.second;
       }
     }
 
@@ -446,7 +467,15 @@ namespace triplet{
     assert(BlockSize > 0);
     assert(ReferNum >= 0); // The sink node has ReferNum=0
 
-    TaihuLight[DeviceId]->MemMalloc(BlockSize);
+#ifdef DEBUG
+    std::cout<<"**Memory block allocate**"<<std::endl;
+    std::cout<<"| BlockId:"<<BlockId<<std::endl;
+    std::cout<<"| DeviceId:"<<DeviceId<<std::endl;
+    std::cout<<"| BlockSize:"<<BlockSize<<std::endl;
+    std::cout<<"| ReferNum:"<<ReferNum<<std::endl;
+    std::cout<<"*************************"<<std::endl;
+#endif
+    TaihuLight[DeviceId]->MemAlloc(BlockSize);
   }
 
   void MemoryBlock::DoFree(Cluster TaihuLight){
@@ -454,7 +483,16 @@ namespace triplet{
     assert(BlockSize >= 0);
     assert(ReferNum <= 0);
 
+#ifdef DEBUG
+    std::cout<<"**Memory block Free**"<<std::endl;
+    std::cout<<"| BlockId:"<<BlockId<<std::endl;
+    std::cout<<"| DeviceId:"<<DeviceId<<std::endl;
+    std::cout<<"| BlockSize:"<<BlockSize<<std::endl;
+    std::cout<<"| ReferNum:"<<ReferNum<<std::endl;
+    std::cout<<"*************************"<<std::endl;
+#endif
     TaihuLight[DeviceId]->MemFree(BlockSize);
+
   }
 
   int MemoryBlock::GetRefers(){

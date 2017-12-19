@@ -7,6 +7,8 @@
 #ifndef TRIPLET_CONSTANTS_H_
 #define TRIPLET_CONSTANTS_H_
 
+#define DEBUG 1
+
 #define BW_ZERO 1e-5
 #define ZERO_POSITIVE 1e-5
 #define ZERO_NEGATIVE -1e-5
