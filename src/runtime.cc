@@ -296,7 +296,9 @@ namespace triplet{
 
 	block_free_queue.emplace(block_id, (transmission_time + global_timer));
 	execution_queue.emplace(task_node_id, (transmission_time + execution_time + global_timer));
-	(it->second)->IncreaseRuntime(execution_time); // TODO: add transmission here as well?
+
+	(it->second)->IncreaseTransTime(transmission_time);
+	(it->second)->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
 	for (auto& x: execution_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
@@ -320,11 +322,18 @@ namespace triplet{
     SimulationReport();
   }
 
+  // TODO: add the memory free queue here
   float Runtime::CalcNearestFinishTime(){
     float NearestTime = -1.0;
     std::map<int, float>::iterator ite;
     for (ite = execution_queue.begin(); ite != execution_queue.end(); ite++){
       if (NearestTime > ite->second || NearestTime < ZERO_NEGATIVE){
+	NearestTime = ite->second;
+      }
+    }
+
+    for (ite = block_free_queue.begin(); ite != block_free_queue.end(); ite++){
+      if (NearestTime > ite->second  ||  NearestTime < ZERO_NEGATIVE){
 	NearestTime = ite->second;
       }
     }
@@ -394,15 +403,16 @@ namespace triplet{
     std::cout<<"Global timer:"<<global_timer<<std::endl;
 
     int devId;
-    float occupyTime;
+    float occupyTime, dataTransTime;
     Cluster::iterator it = TaihuLight.begin();
     for(; it != TaihuLight.end(); it++){
       devId = it->first;
-      occupyTime = (it->second)->GetRuntime();
+      occupyTime = (it->second)->GetRunTime();
+      dataTransTime = (it->second)->GetTransTime();
       assert(devId >= 0);
       assert(occupyTime >= 0.0);
 
-      std::cout<<"Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<std::endl;
+      std::cout<<"Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<std::endl;
     }
 
   }

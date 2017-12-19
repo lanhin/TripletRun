@@ -5,6 +5,7 @@
 // ==================
 
 #include "device.h"
+#include "constants.h"
 #include <cassert>
 #include <iostream>
 
@@ -14,11 +15,12 @@ namespace triplet{
     : id_(-1),
       status(UNAVAILABLE),
       location(-1),
-      occupied_time(0.0),
+      execution_time(0.0),
+      data_trans_time(0.0),
       Allocated_RAM(0) {}
 
   Device::Device(int id, float compute, int RAM, float bw, int loc)
-    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),occupied_time(0.0),Allocated_RAM(0){
+    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0){
     status = FREE;}
 
   Device::~Device(){}
@@ -39,7 +41,7 @@ namespace triplet{
   }
 
   void Device::SetCompPower(float compute){
-    assert(compute >= 0.0);
+    assert(compute >= ZERO_NEGATIVE);
     computing_power = compute;
   }
 
@@ -58,19 +60,25 @@ namespace triplet{
     location = loc;
   }
 
-  void Device::IncreaseRuntime(float ExeTime){
-    assert(occupied_time >= 0.0);
-    assert(ExeTime >= 0.0);
-    occupied_time += ExeTime;
+  void Device::IncreaseTransTime(float TransTime){
+    assert(data_trans_time >= ZERO_NEGATIVE);
+    assert(TransTime >= ZERO_NEGATIVE);
+    data_trans_time += TransTime;
+  }
+  
+  void Device::IncreaseRunTime(float ExeTime){
+    assert(execution_time >= ZERO_NEGATIVE);
+    assert(ExeTime >= ZERO_NEGATIVE);
+    execution_time += ExeTime;
   }
 
   void Device::MemMalloc(int size){
-    assert(Allocated_RAM + size <= RAM_size);
+    assert(Allocated_RAM + size <= RAM_size + ZERO_POSITIVE);
     Allocated_RAM += size;
   }
 
   void Device::MemFree(int size){
-    assert(size <= Allocated_RAM);
+    assert(size <= Allocated_RAM + ZERO_POSITIVE);
     Allocated_RAM = std::max(0, Allocated_RAM - size);
   }
 
@@ -105,7 +113,7 @@ namespace triplet{
   }
 
   int Device::GetFreeRAM(){
-    assert(RAM_size >= Allocated_RAM);
+    assert(RAM_size >= Allocated_RAM + ZERO_NEGATIVE);
     return (RAM_size - Allocated_RAM);
   }
 
@@ -117,9 +125,14 @@ namespace triplet{
     return location;
   }
 
-  float Device::GetRuntime(){
-    assert(occupied_time >= 0.0);
-    return occupied_time;
+  float Device::GetTransTime(){
+    assert(data_trans_time >= ZERO_NEGATIVE);
+    return data_trans_time;
+  }
+
+  float Device::GetRunTime(){
+    assert(execution_time >= ZERO_NEGATIVE);
+    return execution_time;
   }
 
   // The Connections class

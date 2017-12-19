@@ -30,7 +30,8 @@ namespace triplet{
     void SetRAM(int RAM);
     void SetBw(float bw);
     void SetLocation(int loc);
-    void IncreaseRuntime(float ExeTime);
+    void IncreaseTransTime(float TransTime);
+    void IncreaseRunTime(float ExeTime);
     void MemMalloc(int size); // Malloc a memory block
     void MemFree(int size); // Free a memory block
     
@@ -43,7 +44,8 @@ namespace triplet{
     int GetFreeRAM();
     float GetBw();
     int GetLocation();
-    float GetRuntime();
+    float GetTransTime();
+    float GetRunTime();
     
     int id_;
     float computing_power;
@@ -52,7 +54,8 @@ namespace triplet{
     float bandwidth;
     DeviceStatus status;
     int location; //on which node does the device locate
-    float occupied_time;
+    float execution_time; // The time that the device are calculating
+    float data_trans_time; // The time that the device are waiting for input data transmission
   };
 
   class Connections{
