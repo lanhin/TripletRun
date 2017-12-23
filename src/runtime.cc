@@ -342,6 +342,18 @@ namespace triplet{
     SimulationReport();
   }
 
+  /** Pick a task from ready queue according to the
+      scheduling policy.
+   */
+  int Runtime::TaskPick(){
+  }
+
+  /** Pick a free device according to the task requirements and
+      scheduling policy.
+   */
+  int Runtime::DevicePick(int ndId){
+  }
+
   // TODO: add the memory free queue here
   float Runtime::CalcNearestFinishTime(){
     float NearestTime = -1.0;

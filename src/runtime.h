@@ -15,6 +15,18 @@
 namespace triplet{
   typedef std::map<int, Device*> Cluster;
 
+  enum SchedulePolicy {
+    UNKNOWN = 0,
+    FCFS, // First come, first serve. Pick the first task, put it on the fastest device
+    SJF, // Shortest job first, pick the shortest task and put it on the fastest free device
+    RR, // Round robin, pick the first task from the ready queue and put it on the next free device
+    PRIORITY, // Priority, pick the priority most task and put it one the fastest device
+    PEFT,
+    HSIP,
+    MULTILEVEL, // Multi-level
+    DATACENTRIC // Data-centric
+    };
+
   // Class MemoryBlock
   class MemoryBlock{
   public:
@@ -40,18 +52,22 @@ namespace triplet{
     Runtime();
     ~Runtime();
 
+    /* TODO:  Comments on thers APIs. */
     void InitGraph(const char * graphFile);
     void InitCluster(const char * clusterFile);
     void InitRuntime();
     void Execute();
+    int TaskPick();
+    int DevicePick(int ndId);
     float CalcNearestFinishTime();
     float CalcTransmissionTime(Node nd, Device dev);
     float CalcExecutionTime(Node nd, Device dev);
     void SimulationReport();
-    
+
   protected:
     int deviceNum;
     int deviceInUse;
+    SchedulePolicy Scheduler; // define the scheduler
     //int blockIdCounter;
     Graph global_graph;
     Cluster TaihuLight;
