@@ -177,7 +177,8 @@ namespace triplet{
   // Init the runtime data structures: pending_list and ready_queue
   void Runtime::InitRuntime(){
     // TODO: Set Scheduler according to the command options.
-    Scheduler = FCFS;
+    Scheduler = RR;
+    RRCounter = -1;
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       int pend = global_graph.GetNode(*iter)->GetInNum();
       assert(pend >= 0);
@@ -363,16 +364,36 @@ namespace triplet{
       break;
 
     case FCFS:
+    case RR:
       taskIdx = ready_queue.front();
       ready_queue.erase(ready_queue.begin());
       break;
 
-    case SJF:
+    case SJF:{ // Pick the shortest job
+      int tmpComDmd, leastComDmd = -1;
+      std::vector<int>::iterator iter = ready_queue.begin();
+      std::vector<int>::iterator leastIter;
+      for (; iter != ready_queue.end(); iter++){
+	if (leastComDmd < 0){ // the first node in ready_queue
+	  Node * nd = global_graph.GetNode(*iter);
+	  leastComDmd = nd->GetCompDmd();
+	  leastIter = iter;
+	  taskIdx = *iter;
+	}else{
+	  Node * nd = global_graph.GetNode(*iter);
+	  tmpComDmd = nd->GetCompDmd();
+	  if (leastComDmd > tmpComDmd){
+	    leastComDmd = tmpComDmd;
+	    leastIter = iter;
+	    taskIdx = *iter;
+	  }
+	}
+      }
+      ready_queue.erase(leastIter);
       break;
+    }
 
-    case RR:
       break;
-
     case PRIORITY:
       break;
 
@@ -420,6 +441,24 @@ namespace triplet{
       break;
 
     case RR:
+      for (int i = RRCounter+1; i<TaihuLight.size(); i++){
+	Device * tmpDev = TaihuLight[i];
+	if ( tmpDev->IsFree()  &&  ((nd->GetDataDmd())<=tmpDev->GetFreeRAM()) ){
+	  dev = tmpDev;
+	  RRCounter = i;
+	  break;
+	}
+      }
+      if (dev == NULL){// Haven't found a good device
+	for (int i = 0; i<=RRCounter; i++){
+	  Device * tmpDev = TaihuLight[i];
+	  if ( tmpDev->IsFree()  &&  ((nd->GetDataDmd())<=tmpDev->GetFreeRAM()) ){
+	    dev = tmpDev;
+	    RRCounter = i;
+	    break;
+	  }
+	}
+      }
       break;
 
     default:

@@ -6,7 +6,7 @@
 	 "dataDmd": "1000"
 	},
 	{"id":"1",
-	 "comDmd": "9",
+	 "comDmd": "19",
 	 "dataDmd": "999"
 	},
 	{"id":"2",
@@ -14,11 +14,11 @@
 	 "dataDmd": "499"
 	},
 	{"id":"3",
-	 "comDmd": "19",
+	 "comDmd": "29",
 	 "dataDmd": "799"
 	},
 	{"id":"4",
-	 "comDmd": "9",
+	 "comDmd": "90",
 	 "dataDmd": "999"
 	},
 	{"id":"5",
@@ -26,12 +26,24 @@
 	 "dataDmd": "999"
 	},
 	{"id":"6",
-	 "comDmd": "9",
+	 "comDmd": "119",
 	 "dataDmd": "999"
 	},
 	{"id":"7",
-	 "comDmd": "9",
+	 "comDmd": "59",
 	 "dataDmd": "999"
+	},
+	{"id":"8",
+	 "comDmd": "200",
+	 "dataDmd": "299"
+	},
+	{"id":"9",
+	 "comDmd": "500",
+	 "dataDmd": "700"
+	},
+	{"id":"10",
+	 "comDmd": "15",
+	 "dataDmd": "200"
 	}
     ],
     "edges":
@@ -62,6 +74,18 @@
 	},
 	{"src":"4",
 	 "dst":"7"
+	},
+	{"src":"7",
+	 "dst":"8"
+	},
+	{"src":"7",
+	 "dst":"9"
+	},
+	{"src":"8",
+	 "dst":"10"
+	},
+	{"src":"9",
+	 "dst":"10"
 	}
     ]
 }

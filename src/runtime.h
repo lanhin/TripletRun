@@ -73,6 +73,7 @@ namespace triplet{
     Cluster TaihuLight;
     Connections TaihuLightNetwork;
     float global_timer;
+    int RRCounter; // Counter for RR policy
 
     std::set<int> idset;  //Node id set
     std::vector<int> ready_queue; // nodeid
