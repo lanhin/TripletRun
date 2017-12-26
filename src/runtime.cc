@@ -176,6 +176,8 @@ namespace triplet{
 
   // Init the runtime data structures: pending_list and ready_queue
   void Runtime::InitRuntime(){
+    // TODO: Set Scheduler according to the command options.
+    Scheduler = FCFS;
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       int pend = global_graph.GetNode(*iter)->GetInNum();
       assert(pend >= 0);
@@ -269,33 +271,36 @@ namespace triplet{
 	// TODO: 1. consider schedule time here; 2. record the occupy time of a device
  
 	//2.1 pick a task from ready_queue (default: choose the first one element)
-	int task_node_id = ready_queue.front();
-	ready_queue.erase(ready_queue.begin());
+	int task_node_id = TaskPick();//ready_queue.front();
+	//ready_queue.erase(ready_queue.begin());
 	Node* nd = global_graph.GetNode(task_node_id);
 
 	// TODO: Get the node's input data location
 	
 	
 	//2.2 choose a free device to execute the task (default: choose the first free device)
-	Cluster::iterator it = TaihuLight.begin();
+	Device* dev = DevicePick(task_node_id);
+	/*Cluster::iterator it = TaihuLight.begin();
 	for(; it != TaihuLight.end(); it++){
 	  if ((it->second)->IsFree() && ((nd->GetDataDmd())<=(it->second)->GetFreeRAM())){
 	    break;
 	  }
-	}
+	  }*/
 
 	//2.3 do the schedule: busy the device, calc the finish time, allocate device memory and add the task into execution_queue
 
 	// TODO: add more operations when IT is the end of TaihuLight
-	assert(it != TaihuLight.end());
+	//assert(it != TaihuLight.end());
 
-	(it->second)->SetBusy();
+	//(it->second)->SetBusy();
+	dev->SetBusy();
 	deviceInUse ++;
-	nd->SetOccupied(it->first);
+	//nd->SetOccupied(it->first);
+	nd->SetOccupied(dev->GetId());
 	//std::cout<<"Device occupy: "<<nd->GetId()<<" occupys device "<<nd->GetOccupied()<<std::endl;
 	//
-	float transmission_time = CalcTransmissionTime(*nd, *(it->second));
-	float execution_time = CalcExecutionTime(*nd, *(it->second));
+	float transmission_time = CalcTransmissionTime(*nd, *dev);
+	float execution_time = CalcExecutionTime(*nd, *dev);
 
 	//Manage memory blocks data structures
 	//blockIdCounter ++;
@@ -311,8 +316,8 @@ namespace triplet{
 	}
 	execution_queue.emplace(task_node_id, (transmission_time + execution_time + global_timer));
 
-	(it->second)->IncreaseTransTime(transmission_time);
-	(it->second)->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
+	dev->IncreaseTransTime(transmission_time);
+	dev->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
 #ifdef DEBUG
 	std::cout<<"Execution queue: "<<std::endl;
@@ -344,14 +349,80 @@ namespace triplet{
 
   /** Pick a task from ready queue according to the
       scheduling policy.
+      Erase the correspinding task index from ready_queue.
    */
   int Runtime::TaskPick(){
+#ifdef DEBUG
+    std::cout<<"TaskPick: Scheduler "<<Scheduler<<std::endl;
+#endif
+
+    int taskIdx = -1;
+    switch(Scheduler){
+    case UNKNOWN:
+      break;
+
+    case FCFS:
+      taskIdx = ready_queue.front();
+      ready_queue.erase(ready_queue.begin());
+      break;
+
+    case SJF:
+      break;
+
+    case RR:
+      break;
+
+    case PRIORITY:
+      break;
+
+    default:
+      std::cout<<"Error: unrecognized scheduling policy "<<Scheduler<<std::endl;
+      exit(1);
+    }
+
+    return taskIdx;
   }
 
   /** Pick a free device according to the task requirements and
       scheduling policy.
    */
-  int Runtime::DevicePick(int ndId){
+  Device* Runtime::DevicePick(int ndId){
+#ifdef DEBUG
+    std::cout<<"DevicePick: Scheduler"<<Scheduler<<std::endl;
+#endif
+
+    Node * nd = global_graph.GetNode(ndId);
+    Device * dev = NULL;
+    switch(Scheduler){
+    case UNKNOWN:
+      break;
+
+    case FCFS:
+      for (auto& it: TaihuLight){
+	if((it.second)->IsFree() && ((nd->GetDataDmd())<=(it.second)->GetFreeRAM())){
+	  //std::cout<<""<<std::endl;
+	  dev = it.second;
+	  break;
+	}
+      }
+
+      break;
+
+    case SJF:
+      break;
+
+    case RR:
+      break;
+
+    case PRIORITY:
+      break;
+
+    default:
+      std::cout<<"Error: unrecognized scheduling policy "<<Scheduler<<std::endl;
+      exit(1);
+    }
+
+    return dev;
   }
 
   // TODO: add the memory free queue here

@@ -58,7 +58,7 @@ namespace triplet{
     void InitRuntime();
     void Execute();
     int TaskPick();
-    int DevicePick(int ndId);
+    Device* DevicePick(int ndId);
     float CalcNearestFinishTime();
     float CalcTransmissionTime(Node nd, Device dev);
     float CalcExecutionTime(Node nd, Device dev);
