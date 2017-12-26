@@ -194,6 +194,7 @@ namespace triplet{
     }
   }
 
+  // TODO: Count the schduling time itself
   void Runtime::Execute(){
     // execute until all three queues/lists are empty
     while (!ready_queue.empty() || !execution_queue.empty() || !block_free_queue.empty()) {
@@ -307,7 +308,8 @@ namespace triplet{
 	//Manage memory blocks data structures
 	//blockIdCounter ++;
 	int block_id = nd->GetId();
-	MemoryBlock* block = new MemoryBlock(block_id, it->first, nd->GetDataDmd(), nd->GetOutNum());
+	//MemoryBlock(int id, int devid, int size, int refers);
+	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), nd->GetDataDmd(), nd->GetOutNum());
 	block->DoAlloc(TaihuLight);
 	// TODO: check if the block id already exists, which is illegal
 	BlocksMap[block_id] = block;
