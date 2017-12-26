@@ -280,6 +280,7 @@ namespace triplet{
 	
 	//2.2 choose a free device to execute the task (default: choose the first free device)
 	Device* dev = DevicePick(task_node_id);
+	assert(dev != NULL);
 	/*Cluster::iterator it = TaihuLight.begin();
 	for(; it != TaihuLight.end(); it++){
 	  if ((it->second)->IsFree() && ((nd->GetDataDmd())<=(it->second)->GetFreeRAM())){
@@ -329,7 +330,7 @@ namespace triplet{
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
 
 	//Debug
-	std::cout<<"Schedule node "<<task_node_id<<" onto Device "<<it->first;
+	std::cout<<"Schedule node "<<task_node_id<<" onto Device "<<dev->GetId();
 	std::cout<<", global time = "<<global_timer<<" s, expected transmission time = "<<transmission_time<<" s, execution time = "<<execution_time<<" s."<<std::endl;
 #endif
       }
@@ -393,28 +394,32 @@ namespace triplet{
 
     Node * nd = global_graph.GetNode(ndId);
     Device * dev = NULL;
+    float exeTime = -1.0;
     switch(Scheduler){
     case UNKNOWN:
       break;
 
     case FCFS:
+    case SJF:
+    case PRIORITY:
       for (auto& it: TaihuLight){
 	if((it.second)->IsFree() && ((nd->GetDataDmd())<=(it.second)->GetFreeRAM())){
-	  //std::cout<<""<<std::endl;
-	  dev = it.second;
-	  break;
+	  float tmpExeTime = CalcExecutionTime(*nd, *(it.second));
+	  //std::cout<<"node "<<nd->GetId()<<" on dev "<<(it.second)->GetId()<<" Exe time:"<<tmpExeTime<<std::endl;
+	  if (exeTime < 0.0){
+	    exeTime = tmpExeTime;
+	    dev = it.second;
+	  }else{
+	    if (exeTime > tmpExeTime){
+	      exeTime = tmpExeTime;
+	      dev = it.second;
+	    }
+	  }
 	}
       }
-
-      break;
-
-    case SJF:
       break;
 
     case RR:
-      break;
-
-    case PRIORITY:
       break;
 
     default:
