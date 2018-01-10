@@ -49,40 +49,52 @@
     "edges":
     [
 	{"src":"0",
-	 "dst":"1"
+	 "dst":"1",
+	 "weight":"12"
 	},
 	{"src":"0",
-	 "dst":"2"
+	 "dst":"2",
+	 "weight":"22"
 	},
 	{"src":"1",
-	 "dst":"3"
+	 "dst":"3",
+	 "weight":"15"
 	},
 	{"src":"2",
-	 "dst":"4"
+	 "dst":"4",
+	 "weight":"120"
 	},
 	{"src":"2",
-	 "dst":"5"
+	 "dst":"5",
+	 "weight":"2"
 	},
 	{"src":"3",
-	 "dst":"4"
+	 "dst":"4",
+	 "weight":"128"
 	},
 	{"src":"5",
-	 "dst":"6"
+	 "dst":"6",
+	 "weight":"3"
 	},
 	{"src":"6",
-	 "dst":"7"
+	 "dst":"7",
+	 "weight":"12"
 	},
 	{"src":"4",
-	 "dst":"7"
+	 "dst":"7",
+	 "weight":"14"
 	},
 	{"src":"7",
-	 "dst":"8"
+	 "dst":"8",
+	 "weight":"16"
 	},
 	{"src":"7",
-	 "dst":"9"
+	 "dst":"9",
+	 "weight":"1"
 	},
 	{"src":"8",
-	 "dst":"10"
+	 "dst":"10",
+	 "weight":"3"
 	},
 	{"src":"9",
 	 "dst":"10"

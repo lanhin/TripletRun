@@ -79,19 +79,28 @@ namespace triplet{
       float dataDmd1 = std::stof(dataDemand, 0);
       global_graph.AddNode(id1, comDmd1, dataDmd1);
       idset.insert(id1);
-      std::cout<<id1<<' '<<comDmd1<<' '<<dataDmd1<<std::endl;
+
+#ifdef DEBUG
+      std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<std::endl;
+#endif
     }
 
     for (int index = 0; index < root["edges"].size(); index++){
       std::string src = root["edges"][index].get("src", "-1").asString();
       std::string dst = root["edges"][index].get("dst", "-1").asString();
+      std::string comCost = root["edges"][index].get("weight", "-1").asString();
       int src1 = std::stoi(src);
       int dst1 = std::stoi(dst);
-      std::cout<<src1<<' '<<dst1<<std::endl;
-      global_graph.AddEdge(src1, dst1);
+      int comCost1 = std::stoi(comCost);
+      global_graph.AddEdge(src1, dst1, comCost1);
+
+#ifdef DEBUG
+      std::cout<<"Edge "<<src1<<" -> "<<dst1<<", cost: "<<global_graph.GetComCost(src1, dst1)<<std::endl;
+#endif
     }
 
     // Check the constructed graph
+#ifdef DEBUG
     for (int index = 0; index < root["nodes"].size(); index++){
       std::string id = root["nodes"][index].get("id", "-1").asString();
       int id1 = std::stoi(id);
@@ -105,6 +114,7 @@ namespace triplet{
       std::cout<<" Node output: "<<nd->GetOutNum()<<std::endl;
       std::cout<<"==========================="<<std::endl;
     }
+#endif
   }
 
   /**
@@ -396,9 +406,16 @@ namespace triplet{
     }
 
       break;
+
     case PRIORITY:
       break;
 
+    case DATACENTRIC:
+      /** If device in use is small, fetch a task from the ready queue tail.
+	  Else, fetch a task from the head.
+	  We need a flag var. For example, ...
+       */
+      break;
     default:
       std::cout<<"Error: unrecognized scheduling policy "<<Scheduler<<std::endl;
       exit(1);
@@ -461,6 +478,12 @@ namespace triplet{
 	  }
 	}
       }
+      break;
+
+    case DATACENTRIC:
+      /** Pick the device according to the data location
+	  or the min data transformation time.
+       */
       break;
 
     default:

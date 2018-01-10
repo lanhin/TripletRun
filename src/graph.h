@@ -53,15 +53,17 @@ namespace triplet{
 
     void AddNode(int id);
     void AddNode(int id, float comDmd, float dataDmd);
-    void AddEdge(int src, int dst);
+    void AddEdge(int src, int dst, int comCost = -1);
     Node* GetNode(int id);
     int Edges();
     int Nodes();
+    int GetComCost(int src, int dst);
     void Clear();
 
     typedef std::map<int,Node*> graphmap;
   protected:
     graphmap graph_;
+    std::map<std::pair<int ,int>, int> comCostMap;
     int numEdge;
     int numNode;
   };

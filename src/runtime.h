@@ -20,7 +20,7 @@ namespace triplet{
     FCFS, // First come, first serve. Pick the first task, put it on the fastest device
     SJF, // Shortest job first, pick the shortest task and put it on the fastest free device
     RR, // Round robin, pick the first task from the ready queue and put it on the next free device
-    PRIORITY, // Priority, pick the priority most task and put it one the fastest device
+    PRIORITY, // Priority, pick the priority most task and put it on the fastest device
     PEFT,
     HSIP,
     MULTILEVEL, // Multi-level
@@ -80,7 +80,7 @@ namespace triplet{
     std::map<int, int> running_history; //nodeid -> deviceid
     std::map<int, float> execution_queue; // nodeid -> execution finish time
     //std::map<int, float> block_free_queue; // blockid -> refer decrease time
-    std::vector<std::pair<int,float>>block_free_queue;
+    std::vector<std::pair<int,float>>block_free_queue; // blockid -> refer decrease time
     std::map<int, int> pending_list; // nodeid -> pending input
     std::map<int, MemoryBlock*> BlocksMap; // Memory blocks pool, blockid -> memory block
   };// Class Runtime

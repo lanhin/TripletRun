@@ -132,7 +132,7 @@ namespace triplet{
     numNode++;
   }
 
-  void Graph::AddEdge(int src, int dst){
+  void Graph::AddEdge(int src, int dst, int comCost){
     assert(src >= 0);
     assert(dst >= 0);
 
@@ -144,6 +144,9 @@ namespace triplet{
 
     itSrc->second->AddOutput(dst);
     itDst->second->AddInput(src);
+
+    // Record the communication cost
+    comCostMap[std::make_pair(src, dst)] = comCost;
 
     numEdge++;
   }
@@ -163,6 +166,12 @@ namespace triplet{
 
   int Graph::Nodes(){
     return numNode;
+  }
+
+  int Graph::GetComCost(int src, int dst){
+    int cc = comCostMap[std::make_pair(src, dst)];
+
+    return cc;
   }
 
   void Graph::Clear(){
