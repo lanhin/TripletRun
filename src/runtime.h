@@ -52,10 +52,11 @@ namespace triplet{
     Runtime();
     ~Runtime();
 
-    /* TODO:  Comments on thers APIs. */
+    /* TODO:  Comments on these APIs. */
     void InitGraph(const char * graphFile);
     void InitCluster(const char * clusterFile);
     void InitRuntime();
+    void CalcOCT();
     void Execute();
     int TaskPick();
     Device* DevicePick(int ndId);
@@ -75,6 +76,12 @@ namespace triplet{
     float global_timer;
     int RRCounter; // Counter for RR policy
 
+    /* TODO: Remove avgCC. */
+    int avgCC; // Average comunication cost, for OCT calculation
+
+    float **OCT; // The Optimistic Cost Table used in PEFT
+
+    /* TODO: move this idset into class graph? */
     std::set<int> idset;  //Node id set
     std::vector<int> ready_queue; // nodeid
     std::map<int, int> running_history; //nodeid -> deviceid

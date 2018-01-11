@@ -20,6 +20,7 @@ namespace triplet{
     global_timer = 0.0;
     deviceNum = 0;
     deviceInUse = 0;
+    OCT = NULL;
     //blockIdCounter = 0;
   }
 
@@ -85,6 +86,8 @@ namespace triplet{
 #endif
     }
 
+    float avgCost = 0;
+    int i = 0; // Index for available edge weight
     for (int index = 0; index < root["edges"].size(); index++){
       std::string src = root["edges"][index].get("src", "-1").asString();
       std::string dst = root["edges"][index].get("dst", "-1").asString();
@@ -93,14 +96,21 @@ namespace triplet{
       int dst1 = std::stoi(dst);
       int comCost1 = std::stoi(comCost);
       global_graph.AddEdge(src1, dst1, comCost1);
+      if (comCost1 > 0){
+	avgCost = avgCost + (comCost1 - avgCost) / (i+1);
+	i++;
+      }
 
 #ifdef DEBUG
       std::cout<<"Edge "<<src1<<" -> "<<dst1<<", cost: "<<global_graph.GetComCost(src1, dst1)<<std::endl;
 #endif
     }
+    // Record this value in avgCC
+    this->avgCC = (int)avgCost;
+#ifdef DEBUG
+    std::cout<<"Average edge weight: "<<this->avgCC<<", the original value:"<<avgCost<<std::endl;
 
     // Check the constructed graph
-#ifdef DEBUG
     for (int index = 0; index < root["nodes"].size(); index++){
       std::string id = root["nodes"][index].get("id", "-1").asString();
       int id1 = std::stoi(id);
@@ -188,7 +198,7 @@ namespace triplet{
   void Runtime::InitRuntime(){
     // TODO: Set Scheduler according to the command options.
     Scheduler = RR;
-    RRCounter = -1;
+    RRCounter = -1; // Always set it -1 at the beginning of execution?
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       int pend = global_graph.GetNode(*iter)->GetInNum();
       assert(pend >= 0);
@@ -202,6 +212,139 @@ namespace triplet{
 	ready_queue.push_back(*iter);
       }
     }
+    CalcOCT();
+  }
+
+  // Calculate the OCT used in PEFT
+  void Runtime::CalcOCT(){
+
+    //Only for testing
+    //int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
+
+    /** 1. Find the exit vertex, if multiple, creat a new "sink" vertex.
+     */
+    int maxVertexId = 0;
+    int sinkId;
+    std::set<int> exitVertexSet;
+    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
+      if (maxVertexId < *iter){
+	maxVertexId = *iter;
+      }
+      int outputDegree = global_graph.GetNode(*iter)->GetOutNum();
+      if (outputDegree == 0){ //an exit node
+	exitVertexSet.insert(*iter);
+	sinkId = *iter;
+      }
+    }
+
+    if(exitVertexSet.size() > 1){ // Multiple exit vertices
+      // create a new "sink" vertex
+      sinkId = maxVertexId + 1;
+      global_graph.AddNode(sinkId, 0, 0);
+      idset.insert(sinkId);
+      for (auto& it : exitVertexSet){
+	global_graph.AddEdge(it, sinkId, 0);
+      }
+    }
+
+
+    /** 2. Traversing the DAG from the exit to the entry vertex
+	and calculate the OCT. Deal the cross-level edges carefully.
+     */
+
+    // 2.1 Create OCT: first tasks then processors
+    /** TODO: Use the max task and device ids
+	instead of the number of them.
+	Or we need to preprocess the graph and device conf files
+	to make them equal.
+     */
+    int tasks = global_graph.Nodes();
+    int devs = this->deviceNum;
+    OCT = new float*[tasks];
+    for(int i = 0; i < tasks; i++ ){
+      OCT[i] = new float[devs];
+    }
+
+    // Init value: -1.
+    for (int i = 0; i < tasks; i++) {
+      for (int j = 0; j < devs; j++) {
+	OCT[i][j] = -1;
+      }
+    }
+
+    std::set<int> recent; // Store the vertex ids that calculated recently
+    // 2.2 Calculate the sink vertex row
+    for (int i = 0; i < devs; i++) {
+      OCT[sinkId][i] = 0;
+    }
+    recent.insert(sinkId);
+
+    // 2.3 Calculate the other rows
+    while(!recent.empty()){
+      auto it = *(recent.begin());// The first value stored
+      recent.erase(recent.begin());
+      //for (auto& it : recent){
+      Node* nd = global_graph.GetNode(it);
+      for (auto& crtVertId : nd->input){
+	/** Calculate the whole row for crtVertId
+	 */
+	// 2.3.0 If it has already been calculated, continue!
+	if (OCT[crtVertId][0] >= 0){
+	  continue;
+	}
+
+	// 2.3.1 If not all of crtVertId's output has been calculated, continue!
+	Node* crtNd = global_graph.GetNode(crtVertId);
+	bool allSatisfied = true;
+	for(auto& succ : crtNd->output){
+	  if(OCT[succ][0] < 0){
+	    allSatisfied = false;
+	  }
+	}
+	if (!allSatisfied){
+	  continue;
+	}
+
+	// 2.3.2 Calculate the whole row in OCT
+	float current, min, max;
+	for (int devId = 0; devId < devs; devId++) {
+	  max = 0;
+	  for(auto& vertId : crtNd->output){
+	    Node* vertex = global_graph.GetNode(vertId);
+	    min = -1;
+	    for(auto& dev : TaihuLight){
+	      if(OCT[vertex->GetId()][dev.first] < 0){ // The OCT item has not been calculated
+		continue;
+	      }else{
+		current = OCT[vertex->GetId()][dev.first] + ((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower() + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		//current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		if (min > current || min < 0)
+		  min = current;
+	      }
+	    }
+	    if (max < min){
+	      max = min;
+	    }
+	  }
+	  OCT[crtVertId][devId] = max;
+	}
+
+	// 2.3.3 Add crtVertId into recent after calculation
+	recent.insert(crtVertId);
+      }
+    }
+
+    /** 3. Check the OCT if the macro DEBUG is defined.
+     */
+#ifdef DEBUG
+    std::cout<<"The OCT result:"<<std::endl;
+    for (int i = 0; i < tasks; i++) {
+      for (int j = 0; j < devs; j++) {
+	std::cout<<OCT[i][j]<<" ";
+      }
+      std::cout<<std::endl;
+    }
+#endif
   }
 
   // TODO: Count the schduling time itself
@@ -410,6 +553,15 @@ namespace triplet{
     case PRIORITY:
       break;
 
+    case PEFT:
+      break;
+
+    case HSIP:
+      break;
+
+    case MULTILEVEL:
+      break;
+
     case DATACENTRIC:
       /** If device in use is small, fetch a task from the ready queue tail.
 	  Else, fetch a task from the head.
@@ -478,6 +630,15 @@ namespace triplet{
 	  }
 	}
       }
+      break;
+
+    case PEFT:
+      break;
+
+    case HSIP:
+      break;
+
+    case MULTILEVEL:
       break;
 
     case DATACENTRIC:

@@ -169,6 +169,7 @@ namespace triplet{
   }
 
   int Graph::GetComCost(int src, int dst){
+    // TODO: Need to check if the key exists?
     int cc = comCostMap[std::make_pair(src, dst)];
 
     return cc;
