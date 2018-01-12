@@ -57,12 +57,14 @@ namespace triplet{
     void InitCluster(const char * clusterFile);
     void InitRuntime();
     void CalcOCT();
+    void CalcRankOCT();
     void Execute();
     int TaskPick();
     Device* DevicePick(int ndId);
     float CalcNearestFinishTime();
     float CalcTransmissionTime(Node nd, Device dev);
     float CalcExecutionTime(Node nd, Device dev);
+    float CommunicationDataSize(int predId, int succId);
     void SimulationReport();
 
   protected:

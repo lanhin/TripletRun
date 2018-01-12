@@ -213,13 +213,17 @@ namespace triplet{
       }
     }
     CalcOCT();
+    CalcRankOCT();
   }
 
   // Calculate the OCT used in PEFT
   void Runtime::CalcOCT(){
 
-    //Only for testing
-    //int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
+    /** Only for testing.
+	May need to move this into the runtime class definition
+	since some other member functions also need it.
+     */
+    int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
 
     /** 1. Find the exit vertex, if multiple, creat a new "sink" vertex.
      */
@@ -316,8 +320,8 @@ namespace triplet{
 	      if(OCT[vertex->GetId()][dev.first] < 0){ // The OCT item has not been calculated
 		continue;
 	      }else{
-		current = OCT[vertex->GetId()][dev.first] + ((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower() + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
-		//current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		//current = OCT[vertex->GetId()][dev.first] + ((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower() + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
 		if (min > current || min < 0)
 		  min = current;
 	      }
@@ -345,6 +349,21 @@ namespace triplet{
       std::cout<<std::endl;
     }
 #endif
+  }
+
+  void Runtime::CalcRankOCT(){
+    for (int ndId : idset){
+      Node* nd = global_graph.GetNode(ndId);
+      int rowOCT = 0;
+      for (int i = 0; i < this->deviceNum; i++) {
+	rowOCT += OCT[ndId][i];
+      }
+      nd->SetRank( ((float)rowOCT)/this->deviceNum );
+
+#ifdef DEBUG
+      std::cout<<"Vertex "<<ndId<<", rank oct: "<<nd->GetRank()<<std::endl;
+#endif
+    }
   }
 
   // TODO: Count the schduling time itself
@@ -389,6 +408,7 @@ namespace triplet{
 	  deviceInUse --;
 
 	  //fill running_history map
+	  // TODO: do we really need this? I think it can be removed
 	  running_history[nd->GetId()] = devId;
 
 	  //std::cout<<"Update pending list.."<<std::endl;
@@ -473,6 +493,12 @@ namespace triplet{
 	}
 	execution_queue.emplace(task_node_id, (transmission_time + execution_time + global_timer));
 
+	//Record the available time of the corresponding device
+	dev->SetAvaTime(transmission_time + execution_time + global_timer);
+
+	//Record the AFT of the node/vertex
+	nd->SetAFT(transmission_time + execution_time + global_timer);
+
 	dev->IncreaseTransTime(transmission_time);
 	dev->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
@@ -488,6 +514,7 @@ namespace triplet{
 	//Debug
 	std::cout<<"Schedule node "<<task_node_id<<" onto Device "<<dev->GetId();
 	std::cout<<", global time = "<<global_timer<<" s, expected transmission time = "<<transmission_time<<" s, execution time = "<<execution_time<<" s."<<std::endl;
+	std::cout<<"Device ava time updated to: "<<dev->GetAvaTime()<<"s, Node AFT updated to: "<<nd->GetAFT()<<std::endl;
 #endif
       }
 
@@ -545,15 +572,29 @@ namespace triplet{
 	}
       }
       ready_queue.erase(leastIter);
-      break;
     }
-
       break;
 
     case PRIORITY:
       break;
 
-    case PEFT:
+    case PEFT:{
+      /** Traverse all the tasks in the ready queue,
+	  pick the one with the max priority.
+       */
+      float maxPriority = -1;
+      std::vector<int>::iterator iter = ready_queue.begin();
+      std::vector<int>::iterator maxIter; // Point to the task with max priority.
+      for (; iter != ready_queue.end(); iter++){
+	Node* nd = global_graph.GetNode(*iter);
+	if (maxPriority < nd->GetRank()){
+	  maxPriority = nd->GetRank();
+	  maxIter = iter;
+	  taskIdx = *iter;
+	}
+      }
+      ready_queue.erase(maxIter);
+    }
       break;
 
     case HSIP:
@@ -632,7 +673,48 @@ namespace triplet{
       }
       break;
 
-    case PEFT:
+    case PEFT:{
+      /** Traverse all the devices,
+	  pick the one with the min EFT.
+       */
+      float min_OEFT = -1;
+      // 1.Traverse all the devices
+      for (auto& it: TaihuLight){
+	// 2. Calculate EST by traversing all the pred(ndId)
+	float EST = 0;
+	float tmpEST;
+	for (auto& pred : nd->input){
+	  Node* predNd = global_graph.GetNode(pred);
+	  if (predNd->GetOccupied() == it.first){//execute on the same device
+	    tmpEST = predNd->GetAFT();
+	  }else{//on different device
+	    float ct;// Comunication time
+	    ct = TaihuLightNetwork.GetBw((it.second)->GetId(), predNd->GetOccupied()); //bandwith
+	    if (ct <= BW_ZERO){//get bandwith between nodes
+	      ct = TaihuLightNetwork.GetBw((it.second)->GetLocation(), TaihuLight[predNd->GetOccupied()]->GetLocation(), true);
+	    }
+	    ct = CommunicationDataSize(pred, ndId) / ct;
+
+	    tmpEST = predNd->GetAFT() + ct;
+	  }
+	  EST = std::max(tmpEST, EST);
+	}
+	//
+	EST = std::max( EST, (it.second)->GetAvaTime() );
+	// 3. Calculate EFT(nd, it) = EST + w
+	// Two ways to calculate w for debug
+	float EFT = EST + nd->GetCompDmd() / (it.second)->GetCompPower();
+	//float EFT = EST + CTM[ndId][it.first];
+
+	// 4. Calculate OEFT = EFT + OCT
+	float OEFT = EFT + OCT[ndId][it.first];
+
+	if ( (min_OEFT < 0) || (min_OEFT > EFT + OCT[ndId][it.first]) ){
+	  min_OEFT = OEFT;
+	  dev = it.second;
+	}
+      }
+    }
       break;
 
     case HSIP:
@@ -681,6 +763,7 @@ namespace triplet{
     }
   }
 
+  // TODO: add edge weight processing logic
   float Runtime::CalcTransmissionTime(Node nd, Device dev){
     float data_transmission_time=0.0;
 
@@ -729,6 +812,32 @@ namespace triplet{
     data_time = nd.GetDataDmd() / dev.GetBw();
 
     return std::max(calc_time, data_time);
+  }
+
+  /** Get the data size need to be transfered from predId to succId.
+      Return it as a float value.
+   */
+  float Runtime::CommunicationDataSize(int predId, int succId){
+    float dataSize = global_graph.GetComCost(predId, succId);
+    if (dataSize < 0){//No edge weight found, need to calculate
+      float total_data_output = 0.0;
+      float data_trans_ratio = 1.0;
+
+      // Calculate the total output size of succId's all pred nodes
+      Node* nd = global_graph.GetNode(succId);
+      for (auto& it : nd->input){
+	Node* input_nd = global_graph.GetNode(it);
+	total_data_output += input_nd->GetOutputSize();
+      }
+
+      // Get how much of the output data should be transfered.
+      if (total_data_output > nd->GetDataDmd()){
+	data_trans_ratio = nd->GetDataDmd() / total_data_output;
+      }
+
+      dataSize = global_graph.GetNode(predId)->GetOutputSize() * data_trans_ratio;
+    }
+    return dataSize;
   }
 
   void Runtime::SimulationReport(){

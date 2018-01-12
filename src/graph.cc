@@ -12,12 +12,13 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), output_data_size(-1.0){}
+    :id_(-1), output_data_size(-1.0), rank_OCT(0){}
   Node::Node(int id, float compDmd, float dataDmd, float output){
     id_ = id;
     computing_demand = compDmd;
     data_demand = dataDmd;
     output_data_size = output;
+    rank_OCT = 0;
   }
 
   Node::~Node(){
@@ -62,6 +63,16 @@ namespace triplet{
     output.insert(outNode);
   }
 
+  void Node::SetRank(float rank){
+    rank_OCT = rank;
+  }
+
+  void Node::SetAFT(float aft){
+    assert(aft >= ZERO_NEGATIVE);
+
+    this->AFT = aft;
+  }
+
   int Node::GetId(){
     return id_;
   }
@@ -91,6 +102,15 @@ namespace triplet{
       return data_demand;
     else
       return output_data_size;
+  }
+
+  float Node::GetRank(){
+    return rank_OCT;
+  }
+
+  float Node::GetAFT(){
+    assert(this->AFT >= ZERO_NEGATIVE);
+    return this->AFT;
   }
 
   // class graph

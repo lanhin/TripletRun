@@ -26,7 +26,9 @@ namespace triplet{
     void SetOutputSize(float output);
     void AddInput(int inNode);
     void AddOutput(int outNode);
-    
+    void SetRank(float rank);
+    void SetAFT(float aft);
+
     int GetId();
     int GetOccupied();
     float GetCompDmd();
@@ -34,6 +36,8 @@ namespace triplet{
     int GetInNum();
     int GetOutNum();
     float GetOutputSize();
+    float GetRank();
+    float GetAFT();
 
     nodeset output;
     nodeset input;
@@ -44,6 +48,8 @@ namespace triplet{
     float computing_demand;
     float data_demand;
     float output_data_size;
+    float rank_OCT;
+    float AFT; // The actual finish time of this node
   };
 
   class Graph{

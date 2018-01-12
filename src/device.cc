@@ -17,10 +17,11 @@ namespace triplet{
       location(-1),
       execution_time(0.0),
       data_trans_time(0.0),
-      Allocated_RAM(0) {}
+      Allocated_RAM(0),
+      available_time(0.0) {}
 
   Device::Device(int id, float compute, int RAM, float bw, int loc)
-    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0){
+    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0), available_time(0.0) {
     status = FREE;}
 
   Device::~Device(){}
@@ -70,6 +71,12 @@ namespace triplet{
     assert(execution_time >= ZERO_NEGATIVE);
     assert(ExeTime >= ZERO_NEGATIVE);
     execution_time += ExeTime;
+  }
+
+  void Device::SetAvaTime(float time){
+    assert(time >= ZERO_NEGATIVE);
+
+    available_time = time;
   }
 
   void Device::MemAlloc(int size){
@@ -141,6 +148,12 @@ namespace triplet{
   float Device::GetRunTime(){
     assert(execution_time >= ZERO_NEGATIVE);
     return execution_time;
+  }
+
+  float Device::GetAvaTime(){
+    assert(available_time >= ZERO_NEGATIVE);
+
+    return available_time;
   }
 
   // The Connections class

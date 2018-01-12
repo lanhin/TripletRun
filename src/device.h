@@ -32,6 +32,7 @@ namespace triplet{
     void SetLocation(int loc);
     void IncreaseTransTime(float TransTime);
     void IncreaseRunTime(float ExeTime);
+    void SetAvaTime(float time);
     void MemAlloc(int size); // Malloc a memory block
     void MemFree(int size); // Free a memory block
     
@@ -46,6 +47,7 @@ namespace triplet{
     int GetLocation();
     float GetTransTime();
     float GetRunTime();
+    float GetAvaTime();
     
     int id_;
     float computing_power;
@@ -56,6 +58,7 @@ namespace triplet{
     int location; //on which node does the device locate
     float execution_time; // The time that the device are calculating
     float data_trans_time; // The time that the device are waiting for input data transmission
+    float available_time; // The time that this device will be ready for next task
   };
 
   class Connections{
