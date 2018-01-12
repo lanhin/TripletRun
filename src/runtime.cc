@@ -197,7 +197,7 @@ namespace triplet{
   // Init the runtime data structures: pending_list and ready_queue
   void Runtime::InitRuntime(){
     // TODO: Set Scheduler according to the command options.
-    Scheduler = RR;
+    Scheduler = PEFT;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       int pend = global_graph.GetNode(*iter)->GetInNum();
@@ -622,8 +622,10 @@ namespace triplet{
    */
   Device* Runtime::DevicePick(int ndId){
 #ifdef DEBUG
-    std::cout<<"DevicePick: Scheduler"<<Scheduler<<std::endl;
+    std::cout<<"DevicePick: Scheduler "<<Scheduler<<std::endl;
 #endif
+
+    //int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
 
     Node * nd = global_graph.GetNode(ndId);
     Device * dev = NULL;
@@ -680,13 +682,17 @@ namespace triplet{
       float min_OEFT = -1;
       // 1.Traverse all the devices
       for (auto& it: TaihuLight){
+	if( (it.second)->IsBusy() ){// ignore the busy device
+	  continue;
+	}
+
 	// 2. Calculate EST by traversing all the pred(ndId)
 	float EST = 0;
 	float tmpEST;
 	for (auto& pred : nd->input){
 	  Node* predNd = global_graph.GetNode(pred);
 	  if (predNd->GetOccupied() == it.first){//execute on the same device
-	    tmpEST = predNd->GetAFT();
+	    tmpEST = std::max(predNd->GetAFT(), global_timer);
 	  }else{//on different device
 	    float ct;// Comunication time
 	    ct = TaihuLightNetwork.GetBw((it.second)->GetId(), predNd->GetOccupied()); //bandwith
@@ -695,12 +701,13 @@ namespace triplet{
 	    }
 	    ct = CommunicationDataSize(pred, ndId) / ct;
 
-	    tmpEST = predNd->GetAFT() + ct;
+	    tmpEST = std::max(predNd->GetAFT(), global_timer) + ct;
 	  }
 	  EST = std::max(tmpEST, EST);
 	}
 	//
 	EST = std::max( EST, (it.second)->GetAvaTime() );
+
 	// 3. Calculate EFT(nd, it) = EST + w
 	// Two ways to calculate w for debug
 	float EFT = EST + nd->GetCompDmd() / (it.second)->GetCompPower();
