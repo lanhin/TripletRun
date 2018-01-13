@@ -35,6 +35,26 @@ namespace triplet{
     void SetAvaTime(float time);
     void MemAlloc(int size); // Malloc a memory block
     void MemFree(int size); // Free a memory block
+
+    /** Add a new slot into ITS.
+     */
+    void NewSlot(float startTime, float endTime);
+
+    /** Find a slot from ITS,
+	which start no earlier than ESTpred and last at least W_ij.
+	If found, return the start time of the slot;
+	if not, return -1.
+     */
+    float FindSlot(float ESTpred, float W_ij);
+
+    /** Update ITS,
+	the parameters Exe_Ts and W_ij define an execution period.
+     */
+    void UpdateSlot(float Exe_Ts, float W_ij, float current_time=0);
+
+    /** Show the ITS. Output all the slots one by one.
+     */
+    void ShowSlot();
     
     int GetId();
     bool IsFree();
@@ -59,6 +79,7 @@ namespace triplet{
     float execution_time; // The time that the device are calculating
     float data_trans_time; // The time that the device are waiting for input data transmission
     float available_time; // The time that this device will be ready for next task
+    std::map<float, float> ITS; // Idel time slot
   };
 
   class Connections{

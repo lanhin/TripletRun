@@ -97,6 +97,83 @@ namespace triplet{
 #endif
   }
 
+  /** Add a new slot into ITS.
+   */
+  void Device::NewSlot(float startTime, float endTime){
+    assert(startTime >= ZERO_NEGATIVE);
+    assert(endTime + ZERO_POSITIVE >= startTime);
+
+    this->ITS.insert(std::make_pair(startTime, endTime));
+  }
+
+  /** Find a slot from ITS,
+      which start no earlier than ESTpred and last at least W_ij.
+      If found, return the start time of the slot;
+      if not, return -1.
+  */
+  float Device::FindSlot(float ESTpred, float W_ij){
+    assert(ESTpred >= ZERO_NEGATIVE);
+    assert(W_ij >= ZERO_NEGATIVE);
+
+    float min_Ts = -1;
+    // If found multiple, return the earliest one.
+    for (auto& it : this->ITS) {
+      if ( (it.second - std::max(ESTpred, it.first)) >= W_ij ){
+	// a good slot is found
+	if (min_Ts < 0 || min_Ts > it.first){
+	  min_Ts = it.first;
+	}
+      }
+    }
+    return min_Ts;
+  }
+
+  /** Update ITS,
+      the parameters Exe_Ts and W_ij define an execution period.
+      At first, remove slots earlier than current_time.
+  */
+  void Device::UpdateSlot(float Exe_Ts, float W_ij, float current_time){
+
+    //1. Remove slots that earlier than current_time.
+    for (auto it = this->ITS.begin(); it != this->ITS.end(); ++it) {
+      if ( (*it).second < current_time){
+	this->ITS.erase(it);
+      }
+    }
+
+    //2. Now update ITS according to Exe_Ts and W_ij.
+    for (auto it = this->ITS.begin(); it != this->ITS.end(); ++it) {
+      if (Exe_Ts <= (*it).first && Exe_Ts + W_ij >= (*it).second){
+	// Just delete it from ITS
+	this->ITS.erase(it);
+      }else if(Exe_Ts >= (*it).first && Exe_Ts <= (*it).second){
+	if (Exe_Ts + W_ij < (*it).second){
+	  // Delete it and add <it.first, Exe_Ts>, <Exe_Ts+W_ij, it.second>
+	  // This should be the most common case.
+	  this->ITS.erase(it);
+	  this->ITS.insert(std::make_pair((*it).first, Exe_Ts));
+	  this->ITS.insert(std::make_pair(Exe_Ts + W_ij, (*it).second));
+	}else{
+	  // Delete it and add <it.first, Exe_Ts>
+	  this->ITS.erase(it);
+	  this->ITS.insert(std::make_pair((*it).first, Exe_Ts));
+	}
+      }
+    }
+  }
+
+  /** Show the ITS. Output all the slots one by one,
+      mainly for debugging.
+   */
+  void Device::ShowSlot(){
+    std::cout<<"======ITS for Dev"<<GetId()<<"======"<< std::endl;
+    for (auto& it : ITS) {
+      std::cout << it.first << " to " << it.second << std::endl;
+    }
+    std::cout << "==================" << std::endl;
+  }
+
+
   int Device::GetId(){
     return id_;
   }

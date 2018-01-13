@@ -493,6 +493,9 @@ namespace triplet{
 	}
 	execution_queue.emplace(task_node_id, (transmission_time + execution_time + global_timer));
 
+	// Set the ITS of the scheduled device
+	dev->NewSlot(dev->GetAvaTime(), global_timer + transmission_time);
+
 	//Record the available time of the corresponding device
 	dev->SetAvaTime(transmission_time + execution_time + global_timer);
 
@@ -709,7 +712,7 @@ namespace triplet{
 	EST = std::max( EST, (it.second)->GetAvaTime() );
 
 	// 3. Calculate EFT(nd, it) = EST + w
-	// Two ways to calculate w for debug
+	// Two ways to calculate w for debugging
 	float EFT = EST + nd->GetCompDmd() / (it.second)->GetCompPower();
 	//float EFT = EST + CTM[ndId][it.first];
 
