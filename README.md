@@ -41,3 +41,4 @@ make clean
 ## Develope Notes
 (2017-11-13) Now the simulator can really run and produce the processing time of the input graph. There're still many bugs to fix and many features to add.
 (2018-01-12) The PEFT scheduling policy has been roughly implementated.
+(2018-01-14) Combined googletest and add "test" branch.

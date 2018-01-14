@@ -42,7 +42,7 @@ namespace triplet{
 
     /** Find a slot from ITS,
 	which start no earlier than ESTpred and last at least W_ij.
-	If found, return the start time of the slot;
+	If found, return the actual start time;
 	if not, return -1.
      */
     float FindSlot(float ESTpred, float W_ij);

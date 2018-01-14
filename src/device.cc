@@ -125,7 +125,7 @@ namespace triplet{
 	}
       }
     }
-    return min_Ts;
+    return std::max(min_Ts, ESTpred);
   }
 
   /** Update ITS,
