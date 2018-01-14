@@ -17,7 +17,7 @@ TEST(DeviceTest, ITS){
 
   dev->ShowSlot();
 
-  EXPECT_EQ(dev->FindSlot(0.02, 1.0), 0.0);
+  EXPECT_FLOAT_EQ(dev->FindSlot(0.02, 1.0), 0.02);
 
   dev->UpdateSlot(0.2, 0.1);
   dev->ShowSlot();
@@ -35,7 +35,7 @@ TEST(DeviceTest, ITS){
   dev->ShowSlot();
 
   float ts = dev->FindSlot(4.3, 0.5);
-  EXPECT_FLOAT_EQ(4.127, ts);
+  EXPECT_FLOAT_EQ(4.3, ts);
 
   dev->UpdateSlot(std::max(ts, (float)4.3), 0.5);
   dev->ShowSlot();
