@@ -135,29 +135,41 @@ namespace triplet{
   void Device::UpdateSlot(float Exe_Ts, float W_ij, float current_time){
 
     //1. Remove slots that earlier than current_time.
-    for (auto it = this->ITS.begin(); it != this->ITS.end(); ++it) {
+    for (auto it = this->ITS.begin(); it != this->ITS.end();) {
       if ( (*it).second < current_time){
-	this->ITS.erase(it);
+	this->ITS.erase(it++);
+      }else{
+	it++;
       }
     }
 
     //2. Now update ITS according to Exe_Ts and W_ij.
-    for (auto it = this->ITS.begin(); it != this->ITS.end(); ++it) {
-      if (Exe_Ts <= (*it).first && Exe_Ts + W_ij >= (*it).second){
+    float fir, sec;
+    for (auto it = this->ITS.begin(); it != this->ITS.end();) {
+      fir = (*it).first;
+      sec = (*it).second;
+      if (Exe_Ts <= fir && Exe_Ts + W_ij >= fir){
 	// Just delete it from ITS
-	this->ITS.erase(it);
-      }else if(Exe_Ts >= (*it).first && Exe_Ts <= (*it).second){
-	if (Exe_Ts + W_ij < (*it).second){
+	this->ITS.erase(it++);
+	if (Exe_Ts + W_ij <= sec){
+	  this->ITS.insert(std::make_pair(Exe_Ts + W_ij, sec));
+	}
+      }else if(Exe_Ts > fir && Exe_Ts <= sec){
+	if (Exe_Ts + W_ij < sec){
 	  // Delete it and add <it.first, Exe_Ts>, <Exe_Ts+W_ij, it.second>
 	  // This should be the most common case.
-	  this->ITS.erase(it);
-	  this->ITS.insert(std::make_pair((*it).first, Exe_Ts));
-	  this->ITS.insert(std::make_pair(Exe_Ts + W_ij, (*it).second));
+	  this->ITS[fir] = Exe_Ts;
+	  //this->ITS.insert(std::make_pair((*it).first, Exe_Ts));
+	  this->ITS.insert(std::make_pair(Exe_Ts + W_ij, sec));
+	  it++;
 	}else{
 	  // Delete it and add <it.first, Exe_Ts>
-	  this->ITS.erase(it);
-	  this->ITS.insert(std::make_pair((*it).first, Exe_Ts));
+	  this->ITS[fir] = Exe_Ts;
+	  //this->ITS.insert(std::make_pair((*it).first, Exe_Ts));
+	  it++;
 	}
+      }else{
+	it++;
       }
     }
   }
