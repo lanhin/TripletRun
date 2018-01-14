@@ -469,12 +469,19 @@ namespace triplet{
 	//assert(it != TaihuLight.end());
 
 	//(it->second)->SetBusy();
+	/** TODO: Change the SetBusy() logic:
+	    return true if the status was Free;
+	    return false otherwise.
+	    So count deviceInUse according to the returned value.
+	 */
 	dev->SetBusy();
 	deviceInUse ++;
 	//nd->SetOccupied(it->first);
 	nd->SetOccupied(dev->GetId());
 	//std::cout<<"Device occupy: "<<nd->GetId()<<" occupys device "<<nd->GetOccupied()<<std::endl;
-	//
+	/** Note: since the scheduled tasks are ready tasks,
+	    global_timer + transmission_time is the EST of this task.
+	 */
 	float transmission_time = CalcTransmissionTime(*nd, *dev);
 	float execution_time = CalcExecutionTime(*nd, *dev);
 
@@ -491,16 +498,30 @@ namespace triplet{
 	  Node* input_nd = global_graph.GetNode(*iter);
 	  block_free_queue.push_back(std::pair<int, float>(input_nd->GetId(), (transmission_time + global_timer)));
 	}
-	execution_queue.emplace(task_node_id, (transmission_time + execution_time + global_timer));
 
-	// Set the ITS of the scheduled device
-	dev->NewSlot(dev->GetAvaTime(), global_timer + transmission_time);
+	float AST = -1; // Actual Start Time
+	if ( (AST = dev->FindSlot(global_timer+transmission_time, execution_time)) >= 0 ){// Insertion into ITS.
+	  // Update ITS
+	  dev->UpdateSlot(AST, execution_time, global_timer);
+	}else{// Not insertion, normal execution.
+	  AST = std::max(dev->GetAvaTime(), global_timer + transmission_time);
 
-	//Record the available time of the corresponding device
-	dev->SetAvaTime(transmission_time + execution_time + global_timer);
+	  assert(AST >= ZERO_NEGATIVE);
+
+	  //Record the available time of the corresponding device
+	  dev->SetAvaTime(AST + execution_time);
+
+	  if( AST > dev->GetAvaTime()){
+	    // Set the ITS of the scheduled device
+	    dev->NewSlot(dev->GetAvaTime(), global_timer + transmission_time);
+	  }
+	}
+
+	// Fill the execution_queue
+	execution_queue.emplace(task_node_id, (AST + execution_time));
 
 	//Record the AFT of the node/vertex
-	nd->SetAFT(transmission_time + execution_time + global_timer);
+	nd->SetAFT(AST + execution_time);
 
 	dev->IncreaseTransTime(transmission_time);
 	dev->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
@@ -689,12 +710,18 @@ namespace triplet{
 	  continue;
 	}
 
+	float w = nd->GetCompDmd() / (it.second)->GetCompPower();
+
 	// 2. Calculate EST by traversing all the pred(ndId)
 	float EST = 0;
 	float tmpEST;
+	// TODO: The logic below can be replaced by CalcTransmissionTime()
 	for (auto& pred : nd->input){
 	  Node* predNd = global_graph.GetNode(pred);
 	  if (predNd->GetOccupied() == it.first){//execute on the same device
+	    /** Note: since the scheduled tasks are ready tasks,
+		tmpEST = global_timer
+	     */
 	    tmpEST = std::max(predNd->GetAFT(), global_timer);
 	  }else{//on different device
 	    float ct;// Comunication time
@@ -704,16 +731,25 @@ namespace triplet{
 	    }
 	    ct = CommunicationDataSize(pred, ndId) / ct;
 
+	    /** Note: since the scheduled tasks are ready tasks,
+		tmpEST = global_timer + ct
+	    */
 	    tmpEST = std::max(predNd->GetAFT(), global_timer) + ct;
 	  }
 	  EST = std::max(tmpEST, EST);
 	}
-	//
-	EST = std::max( EST, (it.second)->GetAvaTime() );
 
 	// 3. Calculate EFT(nd, it) = EST + w
 	// Two ways to calculate w for debugging
-	float EFT = EST + nd->GetCompDmd() / (it.second)->GetCompPower();
+	if ( (it.second)->FindSlot(EST, w) >= ZERO_NEGATIVE ){
+	  // Insertion into ITS
+	  EST = (it.second)->FindSlot(EST, w);
+	}else{
+	  // Not Insertion
+	  EST = std::max( EST, (it.second)->GetAvaTime() );
+	}
+
+	float EFT = EST + w;
 	//float EFT = EST + CTM[ndId][it.first];
 
 	// 4. Calculate OEFT = EFT + OCT
