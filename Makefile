@@ -5,7 +5,8 @@
 # =======================
 
 CXX = g++
-CXXFLAGS = -O3 -std=c++11
+CXXFLAGS = -g -std=c++11
+TESTFLAGS = $(CXXFLAGS) -I$(CURDIR) -lpthread
 
 triplet: triplet.o device.o graph.o runtime.o jsoncpp.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
@@ -25,9 +26,21 @@ runtime.o: src/runtime.cc
 jsoncpp.o: src/jsoncpp.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
+test: gtest_main.o gtest-all.o device_test.o device.o
+	$(CXX) $(TESTFLAGS) -o $@ $^
+
+gtest_main.o: gtest/gtest_main.cc
+	$(CXX) $(TESTFLAGS) -c -o $@ $^
+
+gtest-all.o: gtest/gtest-all.cc
+	$(CXX) $(TESTFLAGS) -c -o $@ $^
+
+device_test.o: tests/device_test.cc
+	$(CXX) $(TESTFLAGS) -c -o $@ $^
+
 .PHONY: all
-all: triplet
+all: triplet test
 
 .PHONY: clean
 clean:
-	rm -f triplet *.o
+	rm -f triplet test *.o
