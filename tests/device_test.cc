@@ -1,3 +1,9 @@
+// ==================
+// @2017-09 by lanhin
+// ACSA, USTC
+// lanhin1@gmail.com
+// ==================
+
 #include <gtest/gtest.h>
 
 #include "src/device.h"
