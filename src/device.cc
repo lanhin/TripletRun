@@ -26,9 +26,20 @@ namespace triplet{
 
   Device::~Device(){}
 
-  void Device::SetBusy(){
-    assert(status != BUSY);
+  /** Set the device status to busy.
+      If the previous status is not busy, return true,
+      otherwise, return false.
+   */
+  bool Device::SetBusy(){
+    bool previous;
+    if (status != BUSY){
+      previous = true;
+    }else{
+      previous = false;
+    }
+
     status = BUSY;
+    return previous;
   }
 
   void Device::SetFree(){
@@ -108,7 +119,7 @@ namespace triplet{
 
   /** Find a slot from ITS,
       which start no earlier than ESTpred and last at least W_ij.
-      If found, return the start time of the slot;
+      If found, return the actual start time;
       if not, return -1.
   */
   float Device::FindSlot(float ESTpred, float W_ij){
@@ -125,7 +136,13 @@ namespace triplet{
 	}
       }
     }
-    return std::max(min_Ts, ESTpred);
+    if (min_Ts >= 0){
+      // A slot is found
+      return std::max(min_Ts, ESTpred);
+    }else{
+      // Found nothing
+      return min_Ts;
+    }
   }
 
   /** Update ITS,
