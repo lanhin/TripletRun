@@ -368,12 +368,11 @@ namespace triplet{
 
   // TODO: Count the schduling time itself
   void Runtime::Execute(){
-    // execute until all three queues/lists are empty
+    // Execute until all three queues/lists are empty
     while (!ready_queue.empty() || !execution_queue.empty() || !block_free_queue.empty()) {
       /** 0. if a memory block's refer number can be decreased
-          decrease it and check if we need to free the block. */
-      //std::map<int, float>::iterator it = block_free_queue.begin();
-      //      for (; it != block_free_queue.end(); it++){
+          decrease it and check if we need to free the block.
+      */
       for (int i=0; i<block_free_queue.size(); i++){
 	auto& it = block_free_queue[i];
 	if (it.second <= (global_timer + ZERO_POSITIVE)){
@@ -391,9 +390,9 @@ namespace triplet{
 	}
       }
 
-
-      // 1. if a task finished execution, update pending_list, cluster and ready_queue
-      //std::cout<<"stage 1"<<std::endl;
+      /** 1. If a task finished execution,
+	  update pending_list, cluster and ready_queue
+       */
       std::map<int, float>::iterator it = execution_queue.begin();
       for (; it != execution_queue.end(); it++){
 	if (it->second <= (global_timer + ZERO_POSITIVE)){
@@ -404,14 +403,16 @@ namespace triplet{
 #ifdef DEBUG
 	  std::cout<<"Node "<<it->first<<" finished execution. It used device "<<devId<<std::endl;
 #endif
-	  TaihuLight[devId]->SetFree();
-	  deviceInUse --;
+	  if(TaihuLight[devId]->GetAvaTime() <= global_timer){
+	    // Only set free the ones that are really free.
+	    TaihuLight[devId]->SetFree();
+	    deviceInUse --;
+	  }
 
 	  //fill running_history map
 	  // TODO: do we really need this? I think it can be removed
 	  running_history[nd->GetId()] = devId;
 
-	  //std::cout<<"Update pending list.."<<std::endl;
 	  // update pending list and ready queue
 	  std::set<int>::iterator ndit;
 	  for (ndit = nd->output.begin(); ndit != nd->output.end(); ndit ++){
@@ -440,45 +441,30 @@ namespace triplet{
 	}
       }
       
-      // 2. if cluster contains free devices, process a new task from ready queue and update global_timer, deviceInUse
-      //std::cout<<"stage 2"<<std::endl;
-      while ( (deviceInUse < deviceNum)  &&  (!ready_queue.empty()) ) {
-	// TODO: 1. consider schedule time here; 2. record the occupy time of a device
+      /** 2. If the ready queue is not empty, process a new task from it
+	  and update global_timer, deviceInUse
+       */
+      while ( (!ready_queue.empty()) ) {
+	// TODO: 1. consider schedule time here;
  
 	//2.1 pick a task from ready_queue (default: choose the first one element)
-	int task_node_id = TaskPick();//ready_queue.front();
-	//ready_queue.erase(ready_queue.begin());
+	int task_node_id = TaskPick();
 	Node* nd = global_graph.GetNode(task_node_id);
 
-	// TODO: Get the node's input data location
-	
-	
 	//2.2 choose a free device to execute the task (default: choose the first free device)
 	Device* dev = DevicePick(task_node_id);
 	assert(dev != NULL);
-	/*Cluster::iterator it = TaihuLight.begin();
-	for(; it != TaihuLight.end(); it++){
-	  if ((it->second)->IsFree() && ((nd->GetDataDmd())<=(it->second)->GetFreeRAM())){
-	    break;
-	  }
-	  }*/
 
 	//2.3 do the schedule: busy the device, calc the finish time, allocate device memory and add the task into execution_queue
 
-	// TODO: add more operations when IT is the end of TaihuLight
-	//assert(it != TaihuLight.end());
-
-	//(it->second)->SetBusy();
-	/** TODO: Change the SetBusy() logic:
-	    return true if the status was Free;
-	    return false otherwise.
-	    So count deviceInUse according to the returned value.
+	/** Count deviceInUse.
 	 */
-	dev->SetBusy();
-	deviceInUse ++;
-	//nd->SetOccupied(it->first);
+	if ( dev->SetBusy() ){
+	  deviceInUse ++;
+	}
+
 	nd->SetOccupied(dev->GetId());
-	//std::cout<<"Device occupy: "<<nd->GetId()<<" occupys device "<<nd->GetOccupied()<<std::endl;
+
 	/** Note: since the scheduled tasks are ready tasks,
 	    global_timer + transmission_time is the EST of this task.
 	 */
@@ -486,9 +472,7 @@ namespace triplet{
 	float execution_time = CalcExecutionTime(*nd, *dev);
 
 	//Manage memory blocks data structures
-	//blockIdCounter ++;
 	int block_id = nd->GetId();
-	//MemoryBlock(int id, int devid, int size, int refers);
 	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), nd->GetDataDmd(), nd->GetOutNum());
 	block->DoAlloc(TaihuLight);
 	// TODO: check if the block id already exists, which is illegal
@@ -542,12 +526,13 @@ namespace triplet{
 #endif
       }
 
-      // 3. if ready queue is empty or all devices are busy, update global_timer to the nearest finish time
-      //std::cout<<"stage 3"<<std::endl;
-      if ( ready_queue.empty() || (deviceInUse == deviceNum)){
+      /** 3. If ready queue is empty,
+	  update global_timer to the nearest finish time
+       */
+      if ( ready_queue.empty() ){
 	global_timer = CalcNearestFinishTime();
       }
-      
+
     }
 
     // Finish running
@@ -706,7 +691,8 @@ namespace triplet{
       float min_OEFT = -1;
       // 1.Traverse all the devices
       for (auto& it: TaihuLight){
-	if( (it.second)->IsBusy() ){// ignore the busy device
+	if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
+	  // The free memory of the device is too little, skip
 	  continue;
 	}
 
@@ -827,7 +813,7 @@ namespace triplet{
     }
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
-      int input_dev_id = running_history[*iter];
+      int input_dev_id = input_nd->GetOccupied();
 
       // On the same device, ignore the data transmission time
       if (input_dev_id == dev.GetId())
@@ -837,8 +823,17 @@ namespace triplet{
       if ((network_bandwith = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= BW_ZERO){
 	network_bandwith = TaihuLightNetwork.GetBw(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(),  true);
       }
-      
-      data_transmission_time = std::max((input_nd->GetOutputSize() * data_trans_ratio) / network_bandwith, data_transmission_time);
+
+      float ct; // Communication time
+      if ( (global_graph.GetComCost( input_dev_id, nd.GetId() )) >= 0 ) {
+	// The edge has a weight
+	ct = global_graph.GetComCost(input_dev_id, nd.GetId()) / network_bandwith;
+      }else{
+	// The edge doesn't have a weight
+	ct = input_nd->GetOutputSize() * data_trans_ratio / network_bandwith;
+      }
+
+      data_transmission_time = std::max(ct, data_transmission_time);
     }
 
     std::cout<<"Data transmission time: "<<data_transmission_time<<std::endl;

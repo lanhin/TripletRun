@@ -23,7 +23,11 @@ namespace triplet{
       UNAVAILABLE
     };
 
-    void SetBusy();
+    /** Set the device status to busy.
+	If the previous status is not busy, return true,
+	otherwise, return false.
+   */
+    bool SetBusy();
     void SetFree();
     void SetId(int id);
     void SetCompPower(float compute);
