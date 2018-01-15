@@ -1,5 +1,5 @@
 // ==================
-// @2017-09 by lanhin
+// @2018-01 by lanhin
 // ACSA, USTC
 // lanhin1@gmail.com
 // ==================
@@ -38,5 +38,6 @@ TEST(DeviceTest, ITS){
   EXPECT_FLOAT_EQ(4.3, ts);
 
   dev->UpdateSlot(std::max(ts, (float)4.3), 0.5);
+  EXPECT_FLOAT_EQ(dev->FindSlot(3.5, 0.2), -1);
   dev->ShowSlot();
 }
