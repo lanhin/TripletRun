@@ -12,7 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <unistd.h>
-
+#include <cmath>
 
 namespace triplet{
   //Class Runtime
@@ -76,7 +76,7 @@ namespace triplet{
       global_graph.AddNode(id1, comDmd1, dataDmd1);
       idset.insert(id1);
 
-#ifdef DEBUG
+#if 0
       std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<std::endl;
 #endif
     }
@@ -91,11 +91,11 @@ namespace triplet{
       int comCost1 = std::stoi(comCost);
       global_graph.AddEdge(src1, dst1, comCost1);
 
-#ifdef DEBUG
+#if 0
       std::cout<<"Edge "<<src1<<" -> "<<dst1<<", cost: "<<global_graph.GetComCost(src1, dst1)<<std::endl;
 #endif
     }
-#ifdef DEBUG
+#if 0
     // Check the constructed graph
     for (int index = 0; index < root["nodes"].size(); index++){
       std::string id = root["nodes"][index].get("id", "-1").asString();
@@ -137,9 +137,6 @@ namespace triplet{
       return;
     }
 
-    //std::cout<<"InitCluster: Cluster Parsed"<<std::endl;
-    //std::cout<<root<<std::endl;
-
     for (int index = 0; index < root["devices"].size(); index++){
       std::string id = root["devices"][index].get("id", "-1").asString();
       std::string compute = root["devices"][index].get("compute", "-1").asString();
@@ -153,7 +150,9 @@ namespace triplet{
       float bw1 = std::stof(bw, 0);
       int loc1 = std::stoi(loc);
 
+#if 0
       std::cout<<id1<<' '<<compute1<<' '<<RAM1<<' '<<bw1<<' '<<loc1<<std::endl;
+#endif
       Device *dev = new Device(id1, compute1, RAM1, bw1, loc1);
       TaihuLight[id1] = dev;
       deviceNum ++;
@@ -171,7 +170,9 @@ namespace triplet{
       bool btNodes1;
       std::istringstream(btNodes) >> std::boolalpha >> btNodes1;
 
+#if 0
       std::cout<<src1<<' '<<dst1<<' '<<bw1<<' '<<btNodes1<<std::endl;
+#endif
       TaihuLightNetwork.NewLink(src1, dst1, bw1, btNodes1);
     }
 
@@ -357,6 +358,35 @@ namespace triplet{
 #endif
     }
   }
+
+  /** Calculate the computation cost mean value and standard deviation value
+      of node ndId on different devices.
+  */
+  float Runtime::CalcWeightMeanSD(int ndId){
+    double SD = 0;
+    // 1. Calculate the average weight and record it in node.
+    float tmp_mean_weight;
+    Node* nd = global_graph.GetNode(ndId);
+    if ( (tmp_mean_weight = nd->GetMeanWeight()) < 0 ) { //The mean weight has not been calculated
+      tmp_mean_weight = 0;
+      int i = 0;
+      for (auto& it : TaihuLight){
+	i++;
+	tmp_mean_weight += (nd->GetCompDmd() / (it.second)->GetCompPower() - tmp_mean_weight) / i;
+      }
+      nd->SetMeanWeight(tmp_mean_weight);
+    }
+
+    // 2. Calculate the standard deviation value and return it.
+    for (auto& it : TaihuLight) {
+      SD += std::pow((double)(nd->GetCompDmd() / (it.second)->GetCompPower() - tmp_mean_weight), 2);
+    }
+    SD = std::sqrt(SD);
+
+    // 3. Return result
+    return (float)SD;
+  }
+
 
   /** The whole execution logic.
    */

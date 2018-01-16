@@ -105,6 +105,15 @@ namespace triplet{
      */
     float GetAFT();
 
+    /** Set the mean weight value.
+     */
+    void SetMeanWeight(float mean);
+
+    /** Get the mean weight value.
+	If a negative value (-1) is returned, it means it has not been calculated.
+     */
+    float GetMeanWeight();
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -119,6 +128,10 @@ namespace triplet{
     float computing_demand;
     float data_demand;
 
+    /** mean_weight: average execution time of the node (on all devices)
+	Note: this is different from the computing_demand.
+     */
+    float mean_weight;
     float occw; /** occw: out-degree communication cost weight */
     float rank_OCT; // Used in PEFT as the priority.
     float rank_u; // Used in HSIP policy

@@ -86,6 +86,11 @@ namespace triplet{
      */
     void CalcRankOCT();
 
+    /** Calculate the computation cost mean value and standard deviation value
+	of node ndId on different devices.
+    */
+    float CalcWeightMeanSD(int ndId);
+
     /** The whole execution logic.
      */
     // TODO: Count the schduling time itself

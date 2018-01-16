@@ -12,12 +12,13 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0){}
+    :id_(-1), rank_OCT(0), mean_weight(-1.0) {}
   Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
     data_demand = dataDmd;
     rank_OCT = 0;
+    mean_weight = -1.0;
   }
 
   Node::~Node(){
@@ -161,6 +162,19 @@ namespace triplet{
   float Node::GetAFT(){
     assert(this->AFT >= ZERO_NEGATIVE);
     return this->AFT;
+  }
+
+  /** Set the mean weight value.
+   */
+  void Node::SetMeanWeight(float mean){
+    this->mean_weight = mean;
+  }
+
+  /** Get the mean weight value.
+      If a negative value (-1) is returned, it means it has not been calculated.
+   */
+  float Node::GetMeanWeight(){
+    return this->mean_weight;
   }
 
 

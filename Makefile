@@ -26,7 +26,7 @@ runtime.o: src/runtime.cc
 jsoncpp.o: src/jsoncpp.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
-test: gtest_main.o gtest-all.o device_test.o device.o
+test: gtest_main.o gtest-all.o device_test.o device.o graph_test.o graph.o runtime_test.o runtime.o jsoncpp.o
 	$(CXX) $(TESTFLAGS) -o $@ $^
 
 gtest_main.o: gtest/gtest_main.cc
@@ -36,6 +36,12 @@ gtest-all.o: gtest/gtest-all.cc
 	$(CXX) $(TESTFLAGS) -c -o $@ $^
 
 device_test.o: tests/device_test.cc
+	$(CXX) $(TESTFLAGS) -c -o $@ $^
+
+graph_test.o: tests/graph_test.cc
+	$(CXX) $(TESTFLAGS) -c -o $@ $^
+
+runtime_test.o: tests/runtime_test.cc
 	$(CXX) $(TESTFLAGS) -c -o $@ $^
 
 .PHONY: all
