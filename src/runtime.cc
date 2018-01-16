@@ -42,8 +42,7 @@ namespace triplet{
     pending_list.clear();
   }
 
-  /**
-     Init the global graph from configure JSON file.
+  /** Init the global graph from configure JSON file.
    */
   void Runtime::InitGraph(const char * graphFile){
     Json::CharReaderBuilder reader;
@@ -67,10 +66,6 @@ namespace triplet{
       return;
     }
 
-    //std::cout<<"InitGraph: Graph Parsed"<<std::endl;
-    //std::cout<<root<<std::endl;
-
-    //std::cout<<root["nodes"].size()<<std::endl;
     for (int index = 0; index < root["nodes"].size(); index++){
       std::string id = root["nodes"][index].get("id", "-1").asString();
       std::string computeDemand = root["nodes"][index].get("comDmd", "-1.0").asString();
@@ -86,7 +81,6 @@ namespace triplet{
 #endif
     }
 
-    float avgCost = 0;
     int i = 0; // Index for available edge weight
     for (int index = 0; index < root["edges"].size(); index++){
       std::string src = root["edges"][index].get("src", "-1").asString();
@@ -96,20 +90,12 @@ namespace triplet{
       int dst1 = std::stoi(dst);
       int comCost1 = std::stoi(comCost);
       global_graph.AddEdge(src1, dst1, comCost1);
-      if (comCost1 > 0){
-	avgCost = avgCost + (comCost1 - avgCost) / (i+1);
-	i++;
-      }
 
 #ifdef DEBUG
       std::cout<<"Edge "<<src1<<" -> "<<dst1<<", cost: "<<global_graph.GetComCost(src1, dst1)<<std::endl;
 #endif
     }
-    // Record this value in avgCC
-    this->avgCC = (int)avgCost;
 #ifdef DEBUG
-    std::cout<<"Average edge weight: "<<this->avgCC<<", the original value:"<<avgCost<<std::endl;
-
     // Check the constructed graph
     for (int index = 0; index < root["nodes"].size(); index++){
       std::string id = root["nodes"][index].get("id", "-1").asString();
@@ -127,8 +113,7 @@ namespace triplet{
 #endif
   }
 
-  /**
-     Init the cluster "TaihuLight" from configure file.
+  /** Init the cluster "TaihuLight" from configure file.
    */
   void Runtime::InitCluster(const char * clusterFile){
     Json::CharReaderBuilder reader;
@@ -194,7 +179,9 @@ namespace triplet{
 
   }
 
-  // Init the runtime data structures: pending_list and ready_queue
+  /** Init the runtime data structures: pending_list and ready_queue
+      and calculate the OCT, RankOCT of the graph.
+  */
   void Runtime::InitRuntime(){
     // TODO: Set Scheduler according to the command options.
     Scheduler = PEFT;
@@ -216,7 +203,10 @@ namespace triplet{
     CalcRankOCT();
   }
 
-  // Calculate the OCT used in PEFT
+  /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
+      This function cannot be moved into class Graph
+      since it involves not only the graph topology but also the cluster configures.
+  */
   void Runtime::CalcOCT(){
 
     /** Only for testing.
@@ -351,6 +341,8 @@ namespace triplet{
 #endif
   }
 
+  /** Calculate the rank_oct used in PEFT based on OCT.
+   */
   void Runtime::CalcRankOCT(){
     for (int ndId : idset){
       Node* nd = global_graph.GetNode(ndId);
@@ -358,14 +350,16 @@ namespace triplet{
       for (int i = 0; i < this->deviceNum; i++) {
 	rowOCT += OCT[ndId][i];
       }
-      nd->SetRank( ((float)rowOCT)/this->deviceNum );
+      nd->SetRankOCT( ((float)rowOCT)/this->deviceNum );
 
 #ifdef DEBUG
-      std::cout<<"Vertex "<<ndId<<", rank oct: "<<nd->GetRank()<<std::endl;
+      std::cout<<"Vertex "<<ndId<<", rank oct: "<<nd->GetRankOCT()<<std::endl;
 #endif
     }
   }
 
+  /** The whole execution logic.
+   */
   // TODO: Count the schduling time itself
   void Runtime::Execute(){
     // Execute until all three queues/lists are empty
@@ -596,8 +590,8 @@ namespace triplet{
       std::vector<int>::iterator maxIter; // Point to the task with max priority.
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
-	if (maxPriority < nd->GetRank()){
-	  maxPriority = nd->GetRank();
+	if (maxPriority < nd->GetRankOCT()){
+	  maxPriority = nd->GetRankOCT();
 	  maxIter = iter;
 	  taskIdx = *iter;
 	}
@@ -769,24 +763,26 @@ namespace triplet{
     return dev;
   }
 
-  // TODO: add the memory free queue here
+  /** Calculate the nearest time that a new decision can be made.
+   */
   float Runtime::CalcNearestFinishTime(){
     float NearestTime = -1.0;
     std::map<int, float>::iterator ite;
+
+    // 1. Search the execution_queue
     for (ite = execution_queue.begin(); ite != execution_queue.end(); ite++){
       if (NearestTime > ite->second || NearestTime < ZERO_NEGATIVE){
 	NearestTime = ite->second;
       }
     }
 
-    //for (ite = block_free_queue.begin(); ite != block_free_queue.end(); ite++){
+    // 2. Search the block_free_queue
     for (auto& ite: block_free_queue){
       if (NearestTime > ite.second  ||  NearestTime < ZERO_NEGATIVE){
 	NearestTime = ite.second;
       }
     }
 
-    std::cout<<"****Nearest Time:"<<NearestTime<<std::endl;
     if (NearestTime > ZERO_POSITIVE){
       return NearestTime;
     }
@@ -795,7 +791,9 @@ namespace triplet{
     }
   }
 
-  // TODO: add edge weight processing logic
+  /** Calculate the data transmission time if we put nd on dev,
+      return the result as a float.
+  */
   float Runtime::CalcTransmissionTime(Node nd, Device dev){
     float data_transmission_time=0.0;
 
@@ -803,10 +801,10 @@ namespace triplet{
     float total_data_output = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
-      total_data_output += input_nd->GetOutputSize();
+      total_data_output += input_nd->GetDataDmd();
     }
 
-    float network_bandwith = 0.0;
+    float network_bandwidth = 0.0;
     float data_trans_ratio = 1.0;
     if( total_data_output > nd.GetDataDmd() ){
       data_trans_ratio = nd.GetDataDmd() / total_data_output;
@@ -820,17 +818,17 @@ namespace triplet{
 	continue;
 
       // Get the bandwith between the two devices
-      if ((network_bandwith = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= BW_ZERO){
-	network_bandwith = TaihuLightNetwork.GetBw(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(),  true);
+      if ((network_bandwidth = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= BW_ZERO){
+	network_bandwidth = TaihuLightNetwork.GetBw(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(),  true);
       }
 
       float ct; // Communication time
-      if ( (global_graph.GetComCost( input_dev_id, nd.GetId() )) >= 0 ) {
+      if ( (global_graph.GetComCost( *iter, nd.GetId() )) >= 0 ) {
 	// The edge has a weight
-	ct = global_graph.GetComCost(input_dev_id, nd.GetId()) / network_bandwith;
+	ct = global_graph.GetComCost( *iter, nd.GetId() ) / network_bandwidth;
       }else{
 	// The edge doesn't have a weight
-	ct = input_nd->GetOutputSize() * data_trans_ratio / network_bandwith;
+	ct = input_nd->GetDataDmd() * data_trans_ratio / network_bandwidth;
       }
 
       data_transmission_time = std::max(ct, data_transmission_time);
@@ -841,7 +839,9 @@ namespace triplet{
     return data_transmission_time;
   }
 
-  // TODO: split the calculation and transmission time
+  /** Calculate the execution time if we put nd on dev,
+      return the result as a float.
+  */
   float Runtime::CalcExecutionTime(Node nd, Device dev){
     // TODO: More accurate exection time calculation
     float calc_time, data_time;
@@ -868,7 +868,7 @@ namespace triplet{
       Node* nd = global_graph.GetNode(succId);
       for (auto& it : nd->input){
 	Node* input_nd = global_graph.GetNode(it);
-	total_data_output += input_nd->GetOutputSize();
+	total_data_output += input_nd->GetDataDmd();
       }
 
       // Get how much of the output data should be transfered.
@@ -876,13 +876,14 @@ namespace triplet{
 	data_trans_ratio = nd->GetDataDmd() / total_data_output;
       }
 
-      dataSize = global_graph.GetNode(predId)->GetOutputSize() * data_trans_ratio;
+      dataSize = global_graph.GetNode(predId)->GetDataDmd() * data_trans_ratio;
     }
     return dataSize;
   }
 
+  /** Output the simlulation report.
+   */
   void Runtime::SimulationReport(){
-    // TODO: implementation
     std::cout<<"****** Simulation Report ******"<<std::endl;
     std::cout<<"Global timer:"<<global_timer<<std::endl;
 
@@ -901,7 +902,9 @@ namespace triplet{
 
   }
 
+  
   // Class MemoryBlock
+  // TODO: Add unit test for MemoryBlock and remove the DEBUG blocks.
   MemoryBlock::MemoryBlock()
     :BlockId(-1),
      DeviceId(-1),
@@ -916,7 +919,8 @@ namespace triplet{
 
   MemoryBlock::~MemoryBlock(){}
 
-  // Decrease the refer number and return the decreased number
+  /** Decrease the refer number and return the decreased number.
+   */
   int MemoryBlock::DecRefers(int number){
     ReferNum -= number;
     ReferNum = std::max(0, ReferNum);
@@ -924,6 +928,8 @@ namespace triplet{
     return ReferNum;
   }
 
+  /** Allocate the memory block physically
+   */
   void MemoryBlock::DoAlloc(Cluster TaihuLight){
     assert(BlockId >= 0);
     assert(DeviceId >= 0);
@@ -941,6 +947,8 @@ namespace triplet{
     TaihuLight[DeviceId]->MemAlloc(BlockSize);
   }
 
+  /** Free this memory block on corresponding device
+   */
   void MemoryBlock::DoFree(Cluster TaihuLight){
     assert(DeviceId >= 0);
     assert(BlockSize >= 0);
@@ -958,6 +966,8 @@ namespace triplet{
 
   }
 
+  /** Return the number of refers of this memory block
+   */
   int MemoryBlock::GetRefers(){
     assert(ReferNum >= 0);
     return ReferNum;

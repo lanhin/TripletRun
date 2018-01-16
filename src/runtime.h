@@ -34,10 +34,21 @@ namespace triplet{
     MemoryBlock(int id, int devid, int size, int refers);
     ~MemoryBlock();
 
-    int DecRefers(int number = 1); // Decrease the refer number (by 1)
-    void DoAlloc(Cluster TaihuLight); // Allocate the memory block physically
-    void DoFree(Cluster TaihuLight); // Free this memory block on corresponding device
-    int GetRefers(); // Return the number of refers of this memory block
+    /** Decrease the refer number (by 1) and return the decreased number.
+     */
+    int DecRefers(int number = 1);
+
+    /** Allocate the memory block physically
+     */
+    void DoAlloc(Cluster TaihuLight);
+
+    /** Free this memory block on corresponding device
+     */
+    void DoFree(Cluster TaihuLight);
+
+    /** Return the number of refers of this memory block
+    */
+    int GetRefers();
 
   protected:
     int BlockId; // Set it the same as node id is a good choice
@@ -52,34 +63,77 @@ namespace triplet{
     Runtime();
     ~Runtime();
 
-    /* TODO:  Comments on these APIs. */
+    /** Init the global graph from configure JSON file.
+     */
     void InitGraph(const char * graphFile);
+
+    /** Init the cluster "TaihuLight" from configure file.
+    */
     void InitCluster(const char * clusterFile);
+
+    /** Init the runtime data structures: pending_list and ready_queue
+	and calculate the OCT, RankOCT of the graph.
+     */
     void InitRuntime();
+
+    /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
+	This function cannot be moved into class Graph
+	since it involves not only the graph topology but also the cluster configures.
+     */
     void CalcOCT();
+
+    /** Calculate the rank_oct used in PEFT based on OCT.
+     */
     void CalcRankOCT();
+
+    /** The whole execution logic.
+     */
+    // TODO: Count the schduling time itself
     void Execute();
+
+    /** Pick a task from ready queue according to the
+	scheduling policy.
+	Erase the correspinding task index from ready_queue.
+    */
     int TaskPick();
+
+    /** Pick a free device according to the task requirements and
+	scheduling policy.
+    */
     Device* DevicePick(int ndId);
+
+    /** Calculate the nearest time that a new decision can be made.
+     */
     float CalcNearestFinishTime();
+
+    /** Calculate the data transmission time if we put nd on dev,
+	return the result as a float.
+     */
     float CalcTransmissionTime(Node nd, Device dev);
+
+    /** Calculate the execution time if we put nd on dev,
+	return the result as a float.
+     */
     float CalcExecutionTime(Node nd, Device dev);
+
+    /** Get the data size need to be transfered from predId to succId.
+	Return it as a float value.
+    */
     float CommunicationDataSize(int predId, int succId);
+
+    /** Output the simlulation report.
+     */
     void SimulationReport();
 
   protected:
-    int deviceNum;
-    int deviceInUse;
+    int deviceNum; // The total number of devices in TaihuLight.
+    int deviceInUse; // The number of devices in BUSY status.
     SchedulePolicy Scheduler; // define the scheduler
-    //int blockIdCounter;
-    Graph global_graph;
-    Cluster TaihuLight;
-    Connections TaihuLightNetwork;
-    float global_timer;
+    Graph global_graph; // The computing graph.
+    Cluster TaihuLight; // The cluster.
+    Connections TaihuLightNetwork; // Network of the cluster.
+    float global_timer; // For recording global time.
     int RRCounter; // Counter for RR policy
-
-    /* TODO: Remove avgCC. */
-    int avgCC; // Average comunication cost, for OCT calculation
 
     float **OCT; // The Optimistic Cost Table used in PEFT
 

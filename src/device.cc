@@ -42,54 +42,78 @@ namespace triplet{
     return previous;
   }
 
+  /** Set the device status to free.
+      If it's already free, import an error.
+  */
   void Device::SetFree(){
     assert(status != FREE);
     status = FREE;
   }
 
+  /** Set the id of the device.
+   */
   void Device::SetId(int id){
     assert(id >= 0);
     id_ = id;
   }
 
+  /** Set (float) computation power of the device.
+   */
   void Device::SetCompPower(float compute){
     assert(compute >= ZERO_NEGATIVE);
     computing_power = compute;
   }
 
+  /** Set RAM size of the device.
+   */
   void Device::SetRAM(int RAM){
     assert(RAM >= 0);
     RAM_size = RAM;
   }
 
+  /** Set memory bandwidth of the device.
+   */
   void Device::SetBw(float bw){
     assert(bw >= 0.0);
     bandwidth = bw;
   }
 
+  /** Set location (computer node id) of the device.
+   */
   void Device::SetLocation(int loc){
     assert(loc >= 0);
     location = loc;
   }
 
+  /** Record the data trandmission time of the device.
+      This value is not very accurate at present,
+      since the transmission overlaping is not considered.
+  */
   void Device::IncreaseTransTime(float TransTime){
     assert(data_trans_time >= ZERO_NEGATIVE);
     assert(TransTime >= ZERO_NEGATIVE);
     data_trans_time += TransTime;
   }
-  
+
+  /** Increase the execution time of the device.
+   */
   void Device::IncreaseRunTime(float ExeTime){
     assert(execution_time >= ZERO_NEGATIVE);
     assert(ExeTime >= ZERO_NEGATIVE);
     execution_time += ExeTime;
   }
 
+  /** Set available time of the device.
+      This is usually the time that
+      it finishes the last task in its queue.
+  */
   void Device::SetAvaTime(float time){
     assert(time >= ZERO_NEGATIVE);
 
     available_time = time;
   }
 
+  /** Malloc a memory block*/
   void Device::MemAlloc(int size){
     assert(Allocated_RAM + size <= RAM_size + ZERO_POSITIVE);
     Allocated_RAM += size;
@@ -99,6 +123,7 @@ namespace triplet{
 #endif
   }
 
+  /** Free a memory block*/
   void Device::MemFree(int size){
     assert(size <= Allocated_RAM + ZERO_POSITIVE);
     Allocated_RAM = std::max(0, Allocated_RAM - size);
@@ -202,11 +227,14 @@ namespace triplet{
     std::cout << "==================" << std::endl;
   }
 
-
+  /** Get the id of the device.
+   */
   int Device::GetId(){
     return id_;
   }
 
+  /** Check whether the device is FREE.
+   */
   bool Device::IsFree(){
     if (status == FREE){
       return true;
@@ -214,6 +242,8 @@ namespace triplet{
     return false;
   }
 
+  /** Check whether the device is BUSY.
+   */
   bool Device::IsBusy(){
     if (status == BUSY){
       return true;
@@ -221,41 +251,61 @@ namespace triplet{
     return false;
   }
 
+  /** Get status of the device.
+      This is not used at present,
+      since IsFree() and IsBusy() are better.
+  */
   Device::DeviceStatus Device::GetStatus(){
     return status;
   }
 
+  /** Get the computation power of the device.
+   */
   float Device::GetCompPower(){
     return computing_power;
   }
 
+  /** Get the total RAM size of the device.
+   */
   int Device::GetRAM(){
     return RAM_size;
   }
 
+  /** Get the free RAM size of the device.
+   */
   int Device::GetFreeRAM(){
     assert(RAM_size >= Allocated_RAM + ZERO_NEGATIVE);
     return (RAM_size - Allocated_RAM);
   }
 
+  /** Get the (memory access) bandwidth of the device.
+   */
   float Device::GetBw(){
     return bandwidth;
   }
 
+  /** Get the location (computer node id) of the device.
+   */
   int Device::GetLocation(){
     return location;
   }
 
+  /** Return the data transmission time of the device.
+   */
   float Device::GetTransTime(){
     assert(data_trans_time >= ZERO_NEGATIVE);
     return data_trans_time;
   }
 
+  /** Return the total execution time of the device.
+   */
   float Device::GetRunTime(){
     assert(execution_time >= ZERO_NEGATIVE);
     return execution_time;
   }
 
+  /** Get the available time of the device.
+   */
   float Device::GetAvaTime(){
     assert(available_time >= ZERO_NEGATIVE);
 
@@ -273,7 +323,12 @@ namespace triplet{
     assert(NodeConnection.empty());
     assert(DeviceConnection.empty());
   }
-  
+
+  /**  Add a new link between src and dst
+       to the connection.
+       bw: bandwidth
+       BetweenNode: whether between computer nodes or between two devices
+  */
   void Connections::NewLink(int src, int dst, float bw, bool BetweenNode){ //Add a new link to the connection
     assert(src >= 0);
     assert(dst >= 0);
@@ -292,6 +347,9 @@ namespace triplet{
     
   }
 
+  /** Get bandwidth
+      between divices or between nodes.
+  */
   /** Note: if two devices' bandwidth is less than a threshold(like 0.01),
       the caller should re-call this function to get the nodes' bandwith.
    */
@@ -321,6 +379,8 @@ namespace triplet{
     }
   }
 
+  /** Clean all the connections.
+   */
   void Connections::Clear(){
     NodeConnection.clear();
     DeviceConnection.clear();
