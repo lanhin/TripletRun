@@ -38,6 +38,7 @@ make clean
 7. ~~Add communication cost for every edge and process logic in execution.~~
 8. ~~Don't only consider the free devices when scheduling -- this means use max(global_timer, avaTime) when calculating the task time.~~
 9. Support shared memory model.
+10. More DEBUG macros to control the verbose level.
 
 ## Develope Notes
 (2017-11-13) Now the simulator can really run and produce the processing time of the input graph. There're still many bugs to fix and many features to add.

@@ -15,6 +15,8 @@ const char* StatusArray[] = {
   "UNAVAILABLE"
 };
 
+/** Output a device's infomation.
+ */
 void ShowDeviceInfo(triplet::Device dev){
   std::cout<<"========Device info========"<<std::endl;
   std::cout<<" ID: "<<dev.GetId()<<std::endl;
@@ -25,7 +27,9 @@ void ShowDeviceInfo(triplet::Device dev){
   std::cout<<" Location: "<<dev.GetLocation()<<std::endl;
   std::cout<<"==========================="<<std::endl;
 }
-
+ 
+/** Output a graph's information, especially the nodes.
+ */
 void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
   std::cout<<"========Graph info========="<<std::endl;
   std::cout<<" Num of nodes: "<<gra.Edges()<<std::endl;

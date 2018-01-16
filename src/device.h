@@ -28,17 +28,53 @@ namespace triplet{
 	otherwise, return false.
    */
     bool SetBusy();
+
+    /** Set the device status to free.
+	If it's already free, import an error.
+     */
     void SetFree();
+
+    /** Set the id of the device.
+     */
     void SetId(int id);
+
+    /** Set (float) computation power of the device.
+     */
     void SetCompPower(float compute);
+
+    /** Set RAM size of the device.
+     */
     void SetRAM(int RAM);
+
+    /** Set memory bandwidth of the device.
+     */
     void SetBw(float bw);
+
+    /** Set location (computer node id) of the device.
+     */
     void SetLocation(int loc);
+
+    /** Record the data trandmission time of the device.
+	This value is not very accurate at present,
+	since the transmission overlaping is not considered.
+     */
     void IncreaseTransTime(float TransTime);
+
+    /** Increase the execution time of the device.
+     */
     void IncreaseRunTime(float ExeTime);
+
+    /** Set available time of the device.
+	This is usually the time that
+	it finishes the last task in its queue.
+     */
     void SetAvaTime(float time);
-    void MemAlloc(int size); // Malloc a memory block
-    void MemFree(int size); // Free a memory block
+
+    /** Malloc a memory block*/
+    void MemAlloc(int size);
+
+    /** Free a memory block*/
+    void MemFree(int size);
 
     /** Add a new slot into ITS.
      */
@@ -59,20 +95,58 @@ namespace triplet{
     /** Show the ITS. Output all the slots one by one.
      */
     void ShowSlot();
-    
+
+    /** Get the id of the device.
+     */
     int GetId();
+
+    /** Check whether the device is FREE.
+     */
     bool IsFree();
+
+    /** Check whether the device is BUSY.
+     */
     bool IsBusy();
+
+    /** Get status of the device.
+	This is not used at present,
+	since IsFree() and IsBusy() are better.
+     */
     DeviceStatus GetStatus();
+
+    /** Get the computation power of the device.
+     */
     float GetCompPower();
+
+    /** Get the total RAM size of the device.
+     */
     int GetRAM();
+
+    /** Get the free RAM size of the device.
+     */
     int GetFreeRAM();
+
+    /** Get the (memory access) bandwidth of the device.
+     */
     float GetBw();
+
+    /** Get the location (computer node id) of the device.
+     */
     int GetLocation();
+
+    /** Return the data transmission time of the device.
+     */
     float GetTransTime();
+
+    /** Return the total execution time of the device.
+     */
     float GetRunTime();
+
+    /** Get the available time of the device.
+     */
     float GetAvaTime();
-    
+
+  protected:
     int id_;
     float computing_power;
     int RAM_size;
@@ -93,10 +167,23 @@ namespace triplet{
     
     typedef std::map<std::pair<int, int>, float> connection;
 
-    void NewLink(int src, int dst, float bw, bool BetweenNode=false); //Add a new link to the connection
+    /**  Add a new link between src and dst
+	 to the connection.
+	 bw: bandwidth
+	 BetweenNode: whether between computer nodes or between two devices
+     */
+    void NewLink(int src, int dst, float bw, bool BetweenNode=false);
+
+    /** Get bandwidth
+	between divices or between nodes.
+     */
     float GetBw(int src, int dst, bool BetweenNode=false); //Get bandwidth
-    void Clear(); //clean all the connections
-    
+
+    /** Clean all the connections.
+     */
+    void Clear();
+
+  protected:
     connection NodeConnection;
     connection DeviceConnection;
   };
