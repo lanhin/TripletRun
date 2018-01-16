@@ -12,12 +12,11 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), output_data_size(-1.0), rank_OCT(0){}
-  Node::Node(int id, float compDmd, float dataDmd, float output){
+    :id_(-1), rank_OCT(0){}
+  Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
     data_demand = dataDmd;
-    output_data_size = output;
     rank_OCT = 0;
   }
 
@@ -56,12 +55,11 @@ namespace triplet{
     data_demand = demand;
   }
 
-  /** Set the output data size of the node.
-      This is unused at present.
+  /** Set occw of the node.
   */
-  void Node::SetOutputSize(float output){
-    assert(output >= 0.0);
-    output_data_size = output;
+  void Node::SetOCCW(float occw_value){
+    assert(occw_value >= 0.0);
+    this->occw = occw_value;
   }
 
   /** Add an edge to the node: an pred node.
@@ -81,8 +79,15 @@ namespace triplet{
   /** Set rank_OCT of the node,
       which is used in PEFT policy.
   */
-  void Node::SetRank(float rank){
+  void Node::SetRankOCT(float rank){
     rank_OCT = rank;
+  }
+
+  /** Set rank_u of the node,
+      which is used in HSIP policy.
+  */
+  void Node::SetRank_u(float rank){
+    rank_u = rank;
   }
 
   /** Set actual finish time (AFT) of the node.
@@ -131,21 +136,24 @@ namespace triplet{
     return output.size();
   }
 
-  /** Get output size of the node.
-      This is not used at present.
+  /** Get occw of the node.
   */
-  float Node::GetOutputSize(){
-    if(output_data_size < ZERO_POSITIVE)
-      return data_demand;
-    else
-      return output_data_size;
+  float Node::GetOCCW(){
+    return this->occw;
   }
 
   /** Get rank_OCT of the node,
       used in PEFT policy.
   */
-  float Node::GetRank(){
+  float Node::GetRankOCT(){
     return rank_OCT;
+  }
+
+  /** Get rank_u of the node,
+      used in HSIP policy.
+  */
+  float Node::GetRank_u(){
+    return rank_u;
   }
 
   /** Get actual finish time (AFT) of the node.
@@ -154,6 +162,7 @@ namespace triplet{
     assert(this->AFT >= ZERO_NEGATIVE);
     return this->AFT;
   }
+
 
   // class graph
   Graph::Graph(){
@@ -257,6 +266,41 @@ namespace triplet{
 
     return cc;
   }
+
+  /** Calculate Out-degree Communication Cost Weight (OCCW) of a graph node.
+   */
+  float Graph::OCCW(int ndId){
+    Node* nd = GetNode(ndId);
+
+    float occw = 0;
+    for (auto& it : nd->output){
+      if ( GetComCost(ndId, it) >= 0 ){
+	occw += GetComCost(ndId, it);
+      }else{
+	Node* ndOut = GetNode(it);
+	float total_output = 0;
+	float data_trans_ratio = 1.0;
+	for (auto& yait : ndOut->input) {
+	  total_output += GetNode(yait)->GetDataDmd();
+	}
+	if (total_output > ndOut->GetDataDmd()){
+	  data_trans_ratio = ndOut->GetDataDmd() / total_output;
+	}
+	occw += nd->GetDataDmd() * data_trans_ratio;
+      }
+    }
+
+    return occw;
+  }
+
+  /** Calculate all the OCCWs of all the nodes.
+   */
+  void Graph::InitAllOCCW(){
+    for (auto& it : graph_) {
+      it.second->SetOCCW(OCCW(it.first));
+    }
+  }
+
 
   /** Clean up the graph, destory
       everything in it.

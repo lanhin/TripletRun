@@ -350,10 +350,10 @@ namespace triplet{
       for (int i = 0; i < this->deviceNum; i++) {
 	rowOCT += OCT[ndId][i];
       }
-      nd->SetRank( ((float)rowOCT)/this->deviceNum );
+      nd->SetRankOCT( ((float)rowOCT)/this->deviceNum );
 
 #ifdef DEBUG
-      std::cout<<"Vertex "<<ndId<<", rank oct: "<<nd->GetRank()<<std::endl;
+      std::cout<<"Vertex "<<ndId<<", rank oct: "<<nd->GetRankOCT()<<std::endl;
 #endif
     }
   }
@@ -590,8 +590,8 @@ namespace triplet{
       std::vector<int>::iterator maxIter; // Point to the task with max priority.
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
-	if (maxPriority < nd->GetRank()){
-	  maxPriority = nd->GetRank();
+	if (maxPriority < nd->GetRankOCT()){
+	  maxPriority = nd->GetRankOCT();
 	  maxIter = iter;
 	  taskIdx = *iter;
 	}
@@ -879,33 +879,6 @@ namespace triplet{
       dataSize = global_graph.GetNode(predId)->GetDataDmd() * data_trans_ratio;
     }
     return dataSize;
-  }
-
-  /** Calculate Out-degree Communication Cost Weight (OCCW) of a graph node.
-   */
-  /* TODO: Can it be moved into class graph and replace output size? */
-  float Runtime::OCCW(int ndId){
-    Node* nd = global_graph.GetNode(ndId);
-
-    float occw = 0;
-    for (auto& it : nd->output){
-      if ( global_graph.GetComCost(ndId, it) >= 0 ){
-	occw += global_graph.GetComCost(ndId, it);
-      }else{
-	Node* ndOut = global_graph.GetNode(it);
-	float total_output = 0;
-	float data_trans_ratio = 1.0;
-	for (auto& yait : ndOut->input) {
-	  total_output += global_graph.GetNode(yait)->GetDataDmd();
-	}
-	if (total_output > ndOut->GetDataDmd()){
-	  data_trans_ratio = ndOut->GetDataDmd() / total_output;
-	}
-	occw += nd->GetDataDmd() * data_trans_ratio;
-      }
-    }
-
-    return occw;
   }
 
   /** Output the simlulation report.

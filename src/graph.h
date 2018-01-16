@@ -14,7 +14,7 @@ namespace triplet{
   class Node{
   public:
     Node();
-    Node(int id, float compDmd, float dataDmd, float output=-1.0);
+    Node(int id, float compDmd, float dataDmd);
     ~Node();
 
     typedef std::set<int> nodeset;
@@ -35,10 +35,9 @@ namespace triplet{
      */
     void SetDataDmd(float demand);
 
-    /** Set the output data size of the node.
-	This is unused at present.
+    /** Set occw of the node.
      */
-    void SetOutputSize(float output);
+    void SetOCCW(float occw_value);
 
     /** Add an edge to the node: an pred node.
      */
@@ -51,7 +50,12 @@ namespace triplet{
     /** Set rank_OCT of the node,
 	which is used in PEFT policy.
      */
-    void SetRank(float rank);
+    void SetRankOCT(float rank);
+
+    /** Set rank_u of the node,
+	which is used in HSIP policy.
+    */
+    void SetRank_u(float rank);
 
     /** Set actual finish time (AFT) of the node.
      */
@@ -83,15 +87,19 @@ namespace triplet{
      */
     int GetOutNum();
 
-    /** Get output size of the node.
-	This is not used at present.
+    /** Get occw of the node.
      */
-    float GetOutputSize();
+    float GetOCCW();
 
     /** Get rank_OCT of the node,
 	used in PEFT policy.
      */
-    float GetRank();
+    float GetRankOCT();
+
+    /** Get rank_u of the node,
+	used in HSIP policy.
+    */
+    float GetRank_u();
 
     /** Get actual finish time (AFT) of the node.
      */
@@ -111,10 +119,9 @@ namespace triplet{
     float computing_demand;
     float data_demand;
 
-    /** output data size.
-	This is unused at present. */
-    float output_data_size;
+    float occw; /** occw: out-degree communication cost weight */
     float rank_OCT; // Used in PEFT as the priority.
+    float rank_u; // Used in HSIP policy
     float AFT; // The actual finish time of this node
   };
 
@@ -153,6 +160,14 @@ namespace triplet{
 	of the edge; return the cost otherwise.
      */
     int GetComCost(int src, int dst);
+
+    /** Calculate Out-degree Communication Cost Weight (OCCW) of a graph node.
+     */
+    float OCCW(int ndId);
+
+    /** Calculate all the OCCWs of all the nodes.
+     */
+    void InitAllOCCW();
 
     /** Clean up the graph, destory
 	everything in it.

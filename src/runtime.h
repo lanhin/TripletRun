@@ -121,11 +121,6 @@ namespace triplet{
     */
     float CommunicationDataSize(int predId, int succId);
 
-    /** Calculate Out-degree Communication Cost Weight (OCCW) of a graph node.
-     */
-    /* TODO: Can it be moved into class graph? */
-    float OCCW(int ndId);
-
     /** Output the simlulation report.
      */
     void SimulationReport();
