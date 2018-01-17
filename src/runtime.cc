@@ -17,10 +17,12 @@
 namespace triplet{
   //Class Runtime
   Runtime::Runtime(){
+    ETD = false;
     global_timer = 0.0;
     deviceNum = 0;
     deviceInUse = 0;
     OCT = NULL;
+    max_devId = -1;
     //blockIdCounter = 0;
   }
 
@@ -156,6 +158,7 @@ namespace triplet{
       Device *dev = new Device(id1, compute1, RAM1, bw1, loc1);
       TaihuLight[id1] = dev;
       deviceNum ++;
+      max_devId = std::max(max_devId, id1);
     }
 
     for (int index = 0; index < root["links"].size(); index++){
@@ -185,14 +188,17 @@ namespace triplet{
   */
   void Runtime::InitRuntime(){
     // TODO: Set Scheduler according to the command options.
-    Scheduler = PEFT;
+    Scheduler = HSIP;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
+
+    // Init ready_queue
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       int pend = global_graph.GetNode(*iter)->GetInNum();
       assert(pend >= 0);
 
-      //if (VERBOSE)
+#ifdef DEBUG
       std::cout<<"Node id "<<*iter<<", pending number:"<<pend<<std::endl;
+#endif
 
       pending_list[*iter] = pend;
 
@@ -200,8 +206,11 @@ namespace triplet{
 	ready_queue.push_back(*iter);
       }
     }
-    CalcOCT();
-    CalcRankOCT();
+    CalcOCT(); //OCT for PEFT
+    CalcRankOCT(); //RankOCT for PEFT
+
+    global_graph.InitAllOCCW(); //OCCW for HSIP
+    CalcRank_u(); // Rank_u for HSIP
   }
 
   /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
@@ -253,8 +262,10 @@ namespace triplet{
 	Or we need to preprocess the graph and device conf files
 	to make them equal.
      */
-    int tasks = global_graph.Nodes();
-    int devs = this->deviceNum;
+    int tasks = global_graph.MaxNodeId() + 1;//global_graph.Nodes();
+    int devs = this->max_devId + 1;//this->deviceNum;
+    assert(tasks >= 1);
+    assert(devs >= 1);
     OCT = new float*[tasks];
     for(int i = 0; i < tasks; i++ ){
       OCT[i] = new float[devs];
@@ -311,8 +322,8 @@ namespace triplet{
 	      if(OCT[vertex->GetId()][dev.first] < 0){ // The OCT item has not been calculated
 		continue;
 	      }else{
-		//current = OCT[vertex->GetId()][dev.first] + ((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower() + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
-		current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		current = OCT[vertex->GetId()][dev.first] + ((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower() + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		//current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
 		if (min > current || min < 0)
 		  min = current;
 	      }
@@ -361,6 +372,7 @@ namespace triplet{
 
   /** Calculate the computation cost mean value and standard deviation value
       of node ndId on different devices.
+      For convinience, return weight_mean * sd directly.
   */
   float Runtime::CalcWeightMeanSD(int ndId){
     double SD = 0;
@@ -384,9 +396,87 @@ namespace triplet{
     SD = std::sqrt(SD);
 
     // 3. Return result
-    return (float)SD;
+    return (float)SD * tmp_mean_weight;
   }
 
+  /** Calculate rank_u, which is used in HSIP policy.
+   */
+  void Runtime::CalcRank_u(){
+
+    /** 1. Find the exit vertex, if multiple, creat a new "sink" vertex.
+     */
+    int maxVertexId = 0;
+    int sinkId;
+    std::set<int> exitVertexSet;
+    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
+      if (maxVertexId < *iter){
+	maxVertexId = *iter;
+      }
+      int outputDegree = global_graph.GetNode(*iter)->GetOutNum();
+      if (outputDegree == 0){ //an exit node
+	exitVertexSet.insert(*iter);
+	sinkId = *iter;
+      }
+    }
+
+    if(exitVertexSet.size() > 1){ // Multiple exit vertices
+      // create a new "sink" vertex
+      sinkId = maxVertexId + 1;
+      global_graph.AddNode(sinkId, 0, 0);
+      idset.insert(sinkId);
+      for (auto& it : exitVertexSet){
+	global_graph.AddEdge(it, sinkId, 0);
+      }
+    }
+
+    /** 2. Traversing the DAG from the exit to the entry vertex
+	and calculate the rank_u. Deal the cross-level edges carefully.
+    */
+
+    std::set<int> recent; // Store the vertex ids that calculated recently
+    float rank;
+    // 2.1 Calculate sink node's rank_u
+    Node* nd = global_graph.GetNode(sinkId);
+    rank = CalcWeightMeanSD(sinkId);
+    nd->SetRank_u(rank);
+    recent.insert(sinkId);
+
+    // 2.2 Calculate all the others
+    while ( !recent.empty() ){
+      auto it = *(recent.begin());// The first value stored
+      recent.erase(recent.begin());
+      Node* nd = global_graph.GetNode(it);
+      for (auto& crtVertId : nd->input){
+
+	Node* crtNd = global_graph.GetNode(crtVertId);
+	// 2.2.1 If not all of the output nodes' rank_u have been calculated, continue!
+	bool allSatisfied = true;
+	for(auto& succ : crtNd->output){
+	  Node* succNd = global_graph.GetNode(succ);
+	  if (succNd->GetRank_u() < 0){
+	    allSatisfied = false;    
+	  }
+	}
+	if (!allSatisfied){
+	  continue;
+	}
+
+	// 2.2.2 Calculate rank_u for current vertex
+	float max_ranku = 0;
+	for(auto& succ : crtNd->output){
+	  Node* succNd = global_graph.GetNode(succ);
+	  if (max_ranku < (succNd->GetRank_u()) ){
+	    max_ranku = succNd->GetRank_u();
+	  }
+	}
+	rank = CalcWeightMeanSD(crtVertId) + crtNd->GetOCCW() + max_ranku;
+	crtNd->SetRank_u(rank);
+
+	// 2.2.3 Add crtVertId into recent after calculation
+	recent.insert(crtVertId);
+      }
+    }
+  }
 
   /** The whole execution logic.
    */
@@ -476,6 +566,15 @@ namespace triplet{
 	Node* nd = global_graph.GetNode(task_node_id);
 
 	//2.2 choose a free device to execute the task (default: choose the first free device)
+	/** If this is the only entry task and Scheduler is HSIP,
+	    then use entry task duplication policy.
+	 */
+	if ( ready_queue.size() == 1 && Scheduler == HSIP && nd->GetInNum() == 0){
+	  //Entry task duplication
+	  EntryTaskDuplication(nd);
+	  continue;
+	}
+	// Entry task duplication policy doesn't need this.
 	Device* dev = DevicePick(task_node_id);
 	assert(dev != NULL);
 
@@ -507,6 +606,7 @@ namespace triplet{
 	  block_free_queue.push_back(std::pair<int, float>(input_nd->GetId(), (transmission_time + global_timer)));
 	}
 
+	// Process the execution time
 	float AST = -1; // Actual Start Time
 	if ( (AST = dev->FindSlot(global_timer+transmission_time, execution_time)) >= 0 ){// Insertion into ITS.
 	  // Update ITS
@@ -611,6 +711,7 @@ namespace triplet{
     case PRIORITY:
       break;
 
+    case HSIP:
     case PEFT:{
       /** Traverse all the tasks in the ready queue,
 	  pick the one with the max priority.
@@ -620,17 +721,22 @@ namespace triplet{
       std::vector<int>::iterator maxIter; // Point to the task with max priority.
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
-	if (maxPriority < nd->GetRankOCT()){
-	  maxPriority = nd->GetRankOCT();
-	  maxIter = iter;
-	  taskIdx = *iter;
+	if(Scheduler == PEFT){
+	  if (maxPriority < nd->GetRankOCT()){
+	    maxPriority = nd->GetRankOCT();
+	    maxIter = iter;
+	    taskIdx = *iter;
+	  }
+	}else{ //HSIP
+	  if (maxPriority < nd->GetRank_u()){
+	    maxPriority = nd->GetRank_u();
+	    maxIter = iter;
+	    taskIdx = *iter;
+	  }
 	}
       }
       ready_queue.erase(maxIter);
     }
-      break;
-
-    case HSIP:
       break;
 
     case MULTILEVEL:
@@ -708,6 +814,7 @@ namespace triplet{
       }
       break;
 
+    case HSIP:
     case PEFT:{
       /** Traverse all the devices,
 	  pick the one with the min EFT.
@@ -728,7 +835,10 @@ namespace triplet{
 	// TODO: The logic below can be replaced by CalcTransmissionTime()
 	for (auto& pred : nd->input){
 	  Node* predNd = global_graph.GetNode(pred);
-	  if (predNd->GetOccupied() == it.first){//execute on the same device
+	  if (predNd->GetOccupied() == it.first || (predNd->GetInNum() == 0 && this->ETD) ){
+	    /** Execute on the same device
+		or the pred node is an entry node with ETD == true
+	     */
 	    /** Note: since the scheduled tasks are ready tasks,
 		tmpEST = global_timer
 	     */
@@ -762,18 +872,20 @@ namespace triplet{
 	float EFT = EST + w;
 	//float EFT = EST + CTM[ndId][it.first];
 
-	// 4. Calculate OEFT = EFT + OCT
-	float OEFT = EFT + OCT[ndId][it.first];
+	// 4. Calculate OEFT = EFT + OCT for PEFT
+	float OEFT;
+	if (Scheduler == PEFT){
+	OEFT = EFT + OCT[ndId][it.first];
+	}else{ //HSIP
+	  OEFT = EFT;
+	}
 
-	if ( (min_OEFT < 0) || (min_OEFT > EFT + OCT[ndId][it.first]) ){
+	if ( (min_OEFT < 0) || (min_OEFT > OEFT) ){
 	  min_OEFT = OEFT;
 	  dev = it.second;
 	}
       }
     }
-      break;
-
-    case HSIP:
       break;
 
     case MULTILEVEL:
@@ -827,7 +939,6 @@ namespace triplet{
   float Runtime::CalcTransmissionTime(Node nd, Device dev){
     float data_transmission_time=0.0;
 
-    // 1. data transmission time, splited from CalcExecutionTime()
     float total_data_output = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
@@ -844,8 +955,10 @@ namespace triplet{
       int input_dev_id = input_nd->GetOccupied();
 
       // On the same device, ignore the data transmission time
-      if (input_dev_id == dev.GetId())
+      // The input node is an entry node with entry task duplication, ignore the transmission time
+      if (input_dev_id == dev.GetId() || (input_nd->GetInNum() == 0 && this->ETD)){
 	continue;
+      }
 
       // Get the bandwith between the two devices
       if ((network_bandwidth = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= BW_ZERO){
@@ -911,6 +1024,55 @@ namespace triplet{
     return dataSize;
   }
 
+  /** Use entry task duplication policy on nd.
+   */
+  // TODO: Consider data transmission time of the succ nodes of the entry task.
+  void Runtime::EntryTaskDuplication(Node* nd){
+    /** 1. Calculate execution time on every device,
+	set every device's available time by it and get the min execution time.
+	Set busy every device and update device in use counter.
+	Add the min execution time into execution queue.
+     */
+    float min_w = -1; //min execution time
+    for (auto& it : TaihuLight) {
+      float w = CalcExecutionTime(*nd, *(it.second));
+      (it.second)->SetAvaTime(w);
+      (it.second)->SetBusy();
+      deviceInUse++;
+      if (min_w < 0 || min_w > w){
+	// Record the min_w and occupied device
+	min_w = w;
+	nd->SetOccupied((it.second)->GetId());
+      }
+    }
+    assert(min_w >= ZERO_NEGATIVE);
+    execution_queue.emplace(nd->GetId(), min_w);
+
+    /** 2. Alloc memory block
+     */
+    int block_id = nd->GetId();
+    MemoryBlock* block = new MemoryBlock(block_id, nd->GetOccupied(), nd->GetDataDmd(), nd->GetOutNum());
+    block->DoAlloc(TaihuLight);
+    // TODO: check if the block id already exists, which is illegal
+    BlocksMap[block_id] = block;
+
+    /** 3. Erase the task from the ready queue
+	Actually I think ready_queue.clear() is good enough.
+     */
+    for (std::vector<int>::iterator it = ready_queue.begin(); it != ready_queue.end();) {
+      if (*it == nd->GetId()){
+	//std::cout<<*it<<std::endl;
+	ready_queue.erase(it);
+      }else{
+	it++;
+      }
+    }
+
+    // 4. Set the ETD flag
+    this->ETD = true;
+  }
+
+
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
@@ -931,6 +1093,35 @@ namespace triplet{
     }
 
   }
+
+  /** Return the global_graph.
+      Just for testing.
+  */
+  Graph Runtime::GetGraph(){
+    return global_graph;
+  }
+
+  /** Return TaihuLight.
+      Just for testing.
+  */
+  Cluster Runtime::GetCluster(){
+    return TaihuLight;
+  }
+
+  /** Return the execution_queue.
+      Just for testing.
+  */
+  std::map<int, float> Runtime::GetExeQueue(){
+    return execution_queue;
+  }
+
+  /** Return the ready_queue.
+      Just for testing.
+  */
+  std::vector<int> Runtime::GetReadyQueue(){
+    return ready_queue;
+  }
+
 
   
   // Class MemoryBlock

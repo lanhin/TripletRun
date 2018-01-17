@@ -182,6 +182,7 @@ namespace triplet{
   Graph::Graph(){
     numEdge = 0;
     numNode = 0;
+    maxNode = -1;
   }
 
   Graph::~Graph(){
@@ -204,6 +205,7 @@ namespace triplet{
     node->SetId(id);
     graph_[id] = node;
     numNode++;
+    maxNode = std::max(maxNode, id);
   }
 
   /** Add a node into the graph.
@@ -223,6 +225,7 @@ namespace triplet{
     node->SetDataDmd(dataDmd);
     graph_[id] = node;
     numNode++;
+    maxNode = std::max(maxNode, id);
   }
 
   /** Add an edge from src to dst.
@@ -315,6 +318,12 @@ namespace triplet{
     }
   }
 
+  /** Return the max node id in the graph.
+      For OCT matrix construction.
+  */
+  int Graph::MaxNodeId(){
+    return maxNode;
+  }
 
   /** Clean up the graph, destory
       everything in it.

@@ -88,8 +88,14 @@ namespace triplet{
 
     /** Calculate the computation cost mean value and standard deviation value
 	of node ndId on different devices.
+	For convinience, return weight_mean * sd directly.
     */
     float CalcWeightMeanSD(int ndId);
+
+    /** Calculate rank_u, which is used in HSIP policy.
+	Before call this, remember to call graph.InitAllOCCW()
+     */
+    void CalcRank_u();
 
     /** The whole execution logic.
      */
@@ -126,11 +132,36 @@ namespace triplet{
     */
     float CommunicationDataSize(int predId, int succId);
 
+    /** Use entry task duplication policy on nd.
+     */
+    void EntryTaskDuplication(Node* nd);
+
     /** Output the simlulation report.
      */
     void SimulationReport();
 
+    /** Return the global_graph.
+	Just for testing.
+     */
+    Graph GetGraph();
+
+    /** Return TaihuLight.
+	Just for testing.
+     */
+    Cluster GetCluster();
+
+    /** Return the execution_queue.
+	Just for testing.
+     */
+    std::map<int, float> GetExeQueue();
+
+    /** Return the ready_queue.
+	Just for testing.
+     */
+    std::vector<int> GetReadyQueue();
+
   protected:
+    bool ETD; // Entry task duplication flag
     int deviceNum; // The total number of devices in TaihuLight.
     int deviceInUse; // The number of devices in BUSY status.
     SchedulePolicy Scheduler; // define the scheduler
@@ -139,6 +170,7 @@ namespace triplet{
     Connections TaihuLightNetwork; // Network of the cluster.
     float global_timer; // For recording global time.
     int RRCounter; // Counter for RR policy
+    int max_devId; // Max device id in the cluster
 
     float **OCT; // The Optimistic Cost Table used in PEFT
 

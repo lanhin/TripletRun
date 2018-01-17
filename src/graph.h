@@ -182,6 +182,11 @@ namespace triplet{
      */
     void InitAllOCCW();
 
+    /** Return the max node id in the graph.
+	For OCT matrix construction.
+     */
+    int MaxNodeId();
+
     /** Clean up the graph, destory
 	everything in it.
      */
@@ -193,6 +198,7 @@ namespace triplet{
     std::map<std::pair<int ,int>, int> comCostMap;
     int numEdge;
     int numNode;
+    int maxNode; //Max node id
   };
 }
 
