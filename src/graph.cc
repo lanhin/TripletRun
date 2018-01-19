@@ -12,12 +12,13 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0), mean_weight(-1.0) {}
+    :id_(-1), rank_OCT(0),rank_u(-1), mean_weight(-1.0) {}
   Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
     data_demand = dataDmd;
     rank_OCT = 0;
+    rank_u = -1;
     mean_weight = -1.0;
   }
 
@@ -298,12 +299,12 @@ namespace triplet{
 	float total_output = 0;
 	float data_trans_ratio = 1.0;
 	for (auto& yait : ndOut->input) {
-	  total_output += GetNode(yait)->GetDataDmd();
+	  total_output += std::max(GetNode(yait)->GetDataDmd(), (float)0.0);
 	}
 	if (total_output > ndOut->GetDataDmd()){
-	  data_trans_ratio = ndOut->GetDataDmd() / total_output;
+	  data_trans_ratio = std::max(ndOut->GetDataDmd(), (float)0.0) / total_output;
 	}
-	occw += nd->GetDataDmd() * data_trans_ratio;
+	occw += std::max(nd->GetDataDmd(), (float)0.0) * data_trans_ratio;
       }
     }
 

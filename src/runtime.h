@@ -50,6 +50,14 @@ namespace triplet{
     */
     int GetRefers();
 
+    /** Get device location.
+     */
+    int DeviceLocation();
+
+    /** Get block size.
+     */
+    int GetBlockSize();
+
   protected:
     int BlockId; // Set it the same as node id is a good choice
     int DeviceId; // on which device this block locates
@@ -135,6 +143,11 @@ namespace triplet{
     /** Use entry task duplication policy on nd.
      */
     void EntryTaskDuplication(Node* nd);
+
+    /** Detect dead loop and return the result.
+	If a dead loop is detected, report it and return true, otherwise return false.
+     */
+    bool DeadLoopDetect();
 
     /** Output the simlulation report.
      */

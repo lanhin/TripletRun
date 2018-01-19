@@ -53,14 +53,6 @@ int main(int argc, char *argv[])
 
   //ShowDeviceInfo(deva);
 
-  triplet::Connections conec;
-  conec.NewLink(0, 2, 20);
-  conec.NewLink(4,2,20, true);
-
-  std::cout<<"Link 1:"<<conec.GetBw(2,0)<<std::endl;
-  std::cout<<"Link 2:"<<conec.GetBw(2,4,true)<<std::endl;
-  std::cout<<"Link 3:"<<conec.GetBw(2,3)<<std::endl;
-
   // Read and init graph
   triplet::Graph gra;
   std::set<int> idset;
@@ -74,7 +66,7 @@ int main(int argc, char *argv[])
   idset.insert(0);
   idset.insert(1);
 
-  ShowGraphInfo(gra, idset);
+  //ShowGraphInfo(gra, idset);
 
   // Process the graph
 

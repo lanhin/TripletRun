@@ -78,7 +78,7 @@ namespace triplet{
       global_graph.AddNode(id1, comDmd1, dataDmd1);
       idset.insert(id1);
 
-#if 0
+#if DEBUG
       std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<std::endl;
 #endif
     }
@@ -93,7 +93,7 @@ namespace triplet{
       int comCost1 = std::stoi(comCost);
       global_graph.AddEdge(src1, dst1, comCost1);
 
-#if 0
+#if DEBUG
       std::cout<<"Edge "<<src1<<" -> "<<dst1<<", cost: "<<global_graph.GetComCost(src1, dst1)<<std::endl;
 #endif
     }
@@ -322,7 +322,7 @@ namespace triplet{
 	      if(OCT[vertex->GetId()][dev.first] < 0){ // The OCT item has not been calculated
 		continue;
 	      }else{
-		current = OCT[vertex->GetId()][dev.first] + ((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower() + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		current = OCT[vertex->GetId()][dev.first] + std::max(((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower(), (float)1.0) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
 		//current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
 		if (min > current || min < 0)
 		  min = current;
@@ -549,6 +549,7 @@ namespace triplet{
 #ifdef DEBUG
 	  // Output the execution_queue to check its contents
 	  std::cout<<"Execution queue: "<<std::endl;
+	  // TODO: empty queue compatibility
 	  for (auto& x: execution_queue)
 	    std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
 #endif
@@ -576,7 +577,27 @@ namespace triplet{
 	}
 	// Entry task duplication policy doesn't need this.
 	Device* dev = DevicePick(task_node_id);
-	assert(dev != NULL);
+
+	/** If dev == NULL, re-insert the node into ready_queue,
+	    and then calculate nearest finish time.
+
+	    TODO: dead loop detection.
+	    When no device's free RAM can cover any node's demand
+	    in ready_queue and execution_queue is empty, then a
+	    dead loop is detected.
+	    For a dead loop, report it and stop the simulation.
+	 */
+	//assert(dev != NULL);
+	if ( dev == NULL ){
+	  if ( DeadLoopDetect() ){
+	    //DeadLoopReport();
+	    SimulationReport();
+	    exit(1);
+	  }
+	  ready_queue.push_back(task_node_id);
+	  global_timer = CalcNearestFinishTime();
+	  break; // break the inner while loop
+	}
 
 	//2.3 do the schedule: busy the device, calc the finish time, allocate device memory and add the task into execution_queue
 
@@ -596,7 +617,7 @@ namespace triplet{
 
 	//Manage memory blocks data structures
 	int block_id = nd->GetId();
-	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), nd->GetDataDmd(), nd->GetOutNum());
+	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), std::max(nd->GetDataDmd(), (float)0.0), nd->GetOutNum());
 	block->DoAlloc(TaihuLight);
 	// TODO: check if the block id already exists, which is illegal
 	BlocksMap[block_id] = block;
@@ -761,7 +782,7 @@ namespace triplet{
    */
   Device* Runtime::DevicePick(int ndId){
 #ifdef DEBUG
-    std::cout<<"DevicePick: Scheduler "<<Scheduler<<std::endl;
+    std::cout<<"DevicePick: Scheduler "<<Scheduler<<", node "<<ndId<<std::endl;
 #endif
 
     //int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
@@ -942,13 +963,13 @@ namespace triplet{
     float total_data_output = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
-      total_data_output += input_nd->GetDataDmd();
+      total_data_output += std::max(input_nd->GetDataDmd(), (float)0.0);
     }
 
     float network_bandwidth = 0.0;
     float data_trans_ratio = 1.0;
     if( total_data_output > nd.GetDataDmd() ){
-      data_trans_ratio = nd.GetDataDmd() / total_data_output;
+      data_trans_ratio = std::max(nd.GetDataDmd(), (float)0.0) / total_data_output;
     }
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
@@ -971,7 +992,7 @@ namespace triplet{
 	ct = global_graph.GetComCost( *iter, nd.GetId() ) / network_bandwidth;
       }else{
 	// The edge doesn't have a weight
-	ct = input_nd->GetDataDmd() * data_trans_ratio / network_bandwidth;
+	ct = std::max(input_nd->GetDataDmd(), (float)0.0) * data_trans_ratio / network_bandwidth;
       }
 
       data_transmission_time = std::max(ct, data_transmission_time);
@@ -993,7 +1014,7 @@ namespace triplet{
     calc_time = nd.GetCompDmd() / dev.GetCompPower();
 
     //2. data access time
-    data_time = nd.GetDataDmd() / dev.GetBw();
+    data_time = std::max(nd.GetDataDmd(), (float)0.0) / dev.GetBw();
 
     return std::max(calc_time, data_time);
   }
@@ -1011,15 +1032,15 @@ namespace triplet{
       Node* nd = global_graph.GetNode(succId);
       for (auto& it : nd->input){
 	Node* input_nd = global_graph.GetNode(it);
-	total_data_output += input_nd->GetDataDmd();
+	total_data_output += std::max(input_nd->GetDataDmd(), (float)0.0);
       }
 
       // Get how much of the output data should be transfered.
       if (total_data_output > nd->GetDataDmd()){
-	data_trans_ratio = nd->GetDataDmd() / total_data_output;
+	data_trans_ratio = std::max(nd->GetDataDmd(), (float)0.0) / total_data_output;
       }
 
-      dataSize = global_graph.GetNode(predId)->GetDataDmd() * data_trans_ratio;
+      dataSize = std::max(global_graph.GetNode(predId)->GetDataDmd(), (float)0.0) * data_trans_ratio;
     }
     return dataSize;
   }
@@ -1051,7 +1072,7 @@ namespace triplet{
     /** 2. Alloc memory block
      */
     int block_id = nd->GetId();
-    MemoryBlock* block = new MemoryBlock(block_id, nd->GetOccupied(), nd->GetDataDmd(), nd->GetOutNum());
+    MemoryBlock* block = new MemoryBlock(block_id, nd->GetOccupied(), std::max(nd->GetDataDmd(), (float)0.0), nd->GetOutNum());
     block->DoAlloc(TaihuLight);
     // TODO: check if the block id already exists, which is illegal
     BlocksMap[block_id] = block;
@@ -1072,6 +1093,59 @@ namespace triplet{
     this->ETD = true;
   }
 
+  /** Detect dead loop and return the result.
+      If a dead loop is detected, report it and return true, otherwise return false.
+  */
+  bool Runtime::DeadLoopDetect(){
+    /** 1. If the execution_queue is not empty or the ready_queue is empty, just return false.
+     */
+    if ( (!execution_queue.empty()) || ready_queue.empty() ){
+      return false;
+    }
+
+    /** 2. Pick the min RAM demand from ready_queue
+     */
+    float min_data_demand = -1;
+    for (auto& it : ready_queue) {
+      Node* nd = global_graph.GetNode(it);
+      if ( min_data_demand < 0 || min_data_demand > nd->GetDataDmd()){
+	min_data_demand = nd->GetDataDmd();
+      }
+    }
+
+    /** 3. Traverse all the devices, if no free RAM covers the min RAM demand, report the dead loop and return true!
+     */
+    bool dead_loop = true;
+    for (auto& it : TaihuLight) {
+      if ( (it.second)->GetFreeRAM() >= min_data_demand ){
+	dead_loop = false;
+      }
+    }
+
+    if (dead_loop){
+      // Dead loop report
+      std::cout<<"\n****** Emergency! Dead loop detected ******"<<std::endl;
+      /** 1. Every device's free RAM size.
+       */
+      for (auto& it : TaihuLight) {
+	std::cout<<"| Device "<<it.first<<", free RAM: "<<it.second->GetFreeRAM()<<std::endl;
+      }
+
+      /** 2. Memory block output
+       */
+      for (auto& it : BlocksMap) {
+	std::cout<<"| Memory Block "<<it.first<<", on device:"<<(it.second)->DeviceLocation()<<", block size:"<<(it.second)->GetBlockSize()<<std::endl;
+      }
+      /** 3. Ready queue nodes' data demand
+       */
+      for (auto& it : ready_queue) {
+	std::cout<<"| Node "<<it<<", data demand:"<<global_graph.GetNode(it)->GetDataDmd()<<std::endl;
+      }
+      std::cout<<"******************"<<std::endl;
+    }
+
+    return dead_loop;
+  }
 
   /** Output the simlulation report.
    */
@@ -1193,4 +1267,17 @@ namespace triplet{
     assert(ReferNum >= 0);
     return ReferNum;
   }
+
+  /** Get device location.
+   */
+  int MemoryBlock::DeviceLocation(){
+    return DeviceId;
+  }
+
+  /** Get block size.
+   */
+  int MemoryBlock::GetBlockSize(){
+    return BlockSize;
+  }
+
 }
