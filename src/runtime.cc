@@ -449,6 +449,11 @@ namespace triplet{
       for (auto& crtVertId : nd->input){
 
 	Node* crtNd = global_graph.GetNode(crtVertId);
+	// 2.2.0 If it has already been calculated, continue
+	if (crtNd->GetRank_u() >= 0){
+	  continue;
+	}
+
 	// 2.2.1 If not all of the output nodes' rank_u have been calculated, continue!
 	bool allSatisfied = true;
 	for(auto& succ : crtNd->output){
