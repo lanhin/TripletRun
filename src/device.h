@@ -146,6 +146,18 @@ namespace triplet{
      */
     float GetAvaTime();
 
+    /** Set finished_tasks value.
+     */
+    void SetTasks(int tasks);
+
+    /** Increase finished_tasks (by 1).
+     */
+    void IncreaseTasks(int tasks = 1);
+
+    /** Get finished_tasks.
+     */
+    int GetTasks();
+
   protected:
     int id_;
     float computing_power;
@@ -154,6 +166,7 @@ namespace triplet{
     float bandwidth;
     DeviceStatus status;
     int location; //on which node does the device locate
+    int finished_tasks; // The number of tasks finished by this device
     float execution_time; // The time that the device are calculating
     float data_trans_time; // The time that the device are waiting for input data transmission
     float available_time; // The time that this device will be ready for next task

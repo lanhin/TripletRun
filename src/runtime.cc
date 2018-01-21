@@ -522,6 +522,9 @@ namespace triplet{
 #ifdef DEBUG
 	  std::cout<<"Node "<<it->first<<" finished execution. It used device "<<devId<<std::endl;
 #endif
+	  // Set the finished_tasks properly
+	  TaihuLight[devId]->IncreaseTasks(1);
+
 	  if(TaihuLight[devId]->GetAvaTime() <= global_timer){
 	    // Only set free the ones that are really free.
 	    TaihuLight[devId]->SetFree();
@@ -551,7 +554,7 @@ namespace triplet{
 	  // erase the task from execution_queue
 	  execution_queue.erase(it);
 
-#ifdef DEBUG
+#if 0
 	  // Output the execution_queue to check its contents
 	  std::cout<<"Execution queue: "<<std::endl;
 	  // TODO: empty queue compatibility
@@ -595,7 +598,6 @@ namespace triplet{
 	//assert(dev != NULL);
 	if ( dev == NULL ){
 	  if ( DeadLoopDetect() ){
-	    //DeadLoopReport();
 	    SimulationReport();
 	    exit(1);
 	  }
@@ -660,7 +662,7 @@ namespace triplet{
 	dev->IncreaseTransTime(transmission_time);
 	dev->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
-#ifdef DEBUG
+#if 0
 	std::cout<<"Execution queue: "<<std::endl;
 	for (auto& x: execution_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
@@ -1158,17 +1160,18 @@ namespace triplet{
     std::cout<<"****** Simulation Report ******"<<std::endl;
     std::cout<<"Global timer:"<<global_timer<<std::endl;
 
-    int devId;
+    int devId, tasks;
     float occupyTime, dataTransTime;
     Cluster::iterator it = TaihuLight.begin();
     for(; it != TaihuLight.end(); it++){
       devId = it->first;
       occupyTime = (it->second)->GetRunTime();
       dataTransTime = (it->second)->GetTransTime();
+      tasks = (it->second)->GetTasks();
       assert(devId >= 0);
       assert(occupyTime >= 0.0);
 
-      std::cout<<"Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<std::endl;
+      std::cout<<"Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<std::endl;
     }
 
   }
