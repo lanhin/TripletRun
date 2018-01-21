@@ -21,7 +21,7 @@ namespace triplet{
       Allocated_RAM(0),
       available_time(0.0) {}
 
-  Device::Device(int id, float compute, int RAM, float bw, int loc)
+  Device::Device(int id, float compute, float RAM, float bw, int loc)
     : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0), available_time(0.0) {
     status = FREE;}
 
@@ -67,8 +67,8 @@ namespace triplet{
 
   /** Set RAM size of the device.
    */
-  void Device::SetRAM(int RAM){
-    assert(RAM >= 0);
+  void Device::SetRAM(float RAM){
+    assert(RAM > ZERO_NEGATIVE);
     RAM_size = RAM;
   }
 
@@ -115,22 +115,22 @@ namespace triplet{
   }
 
   /** Malloc a memory block*/
-  void Device::MemAlloc(int size){
+  void Device::MemAlloc(float size){
     assert(Allocated_RAM + size <= RAM_size + ZERO_POSITIVE);
     Allocated_RAM += size;
 
 #ifdef DEBUG
-    std::cout<<"----MemAlloc on device "<<id_<<", allocated RAM: "<<Allocated_RAM<<" MB, total RAM: "<<RAM_size<<" MB."<<std::endl;
+    std::cout<<"----MemAlloc on device "<<id_<<", allocated RAM: "<<Allocated_RAM<<" KB, total RAM: "<<RAM_size<<" KB."<<std::endl;
 #endif
   }
 
   /** Free a memory block*/
-  void Device::MemFree(int size){
+  void Device::MemFree(float size){
     assert(size <= Allocated_RAM + ZERO_POSITIVE);
-    Allocated_RAM = std::max(0, Allocated_RAM - size);
+    Allocated_RAM = std::max((float)0, Allocated_RAM - size);
 
 #ifdef DEBUG
-    std::cout<<"----MemFree on device "<<id_<<", allocated RAM: "<<Allocated_RAM<<" MB, total RAM: "<<RAM_size<<" MB."<<std::endl;
+    std::cout<<"----MemFree on device "<<id_<<", allocated RAM: "<<Allocated_RAM<<" KB, total RAM: "<<RAM_size<<" KB."<<std::endl;
 #endif
   }
 
@@ -268,13 +268,13 @@ namespace triplet{
 
   /** Get the total RAM size of the device.
    */
-  int Device::GetRAM(){
+  float Device::GetRAM(){
     return RAM_size;
   }
 
   /** Get the free RAM size of the device.
    */
-  int Device::GetFreeRAM(){
+  float Device::GetFreeRAM(){
     assert(RAM_size >= Allocated_RAM + ZERO_NEGATIVE);
     return (RAM_size - Allocated_RAM);
   }

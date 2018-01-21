@@ -14,7 +14,7 @@ namespace triplet{
 
   public:
     Device();
-    Device(int id, float compute, int RAM, float bw, int loc);
+    Device(int id, float compute, float RAM, float bw, int loc);
     ~Device();
 
     enum DeviceStatus {
@@ -44,7 +44,7 @@ namespace triplet{
 
     /** Set RAM size of the device.
      */
-    void SetRAM(int RAM);
+    void SetRAM(float RAM);
 
     /** Set memory bandwidth of the device.
      */
@@ -71,10 +71,10 @@ namespace triplet{
     void SetAvaTime(float time);
 
     /** Malloc a memory block*/
-    void MemAlloc(int size);
+    void MemAlloc(float size);
 
     /** Free a memory block*/
-    void MemFree(int size);
+    void MemFree(float size);
 
     /** Add a new slot into ITS.
      */
@@ -120,11 +120,11 @@ namespace triplet{
 
     /** Get the total RAM size of the device.
      */
-    int GetRAM();
+    float GetRAM();
 
     /** Get the free RAM size of the device.
      */
-    int GetFreeRAM();
+    float GetFreeRAM();
 
     /** Get the (memory access) bandwidth of the device.
      */
@@ -161,8 +161,8 @@ namespace triplet{
   protected:
     int id_;
     float computing_power;
-    int RAM_size; /* TODO: just int? */
-    int Allocated_RAM;  // number of RAM size in use
+    float RAM_size; /* TODO: just int? */
+    float Allocated_RAM;  // number of RAM size in use
     float bandwidth;
     DeviceStatus status;
     int location; //on which node does the device locate

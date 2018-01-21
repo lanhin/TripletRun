@@ -154,7 +154,7 @@ namespace triplet{
     /** Add an edge from src to dst.
 	Also give the communication cost if need.
      */
-    void AddEdge(int src, int dst, int comCost = -1);
+    void AddEdge(int src, int dst, float comCost = -1);
 
     /** Get a node pointer according to the given node id.
      */
@@ -192,6 +192,10 @@ namespace triplet{
      */
     void Clear();
 
+    /** Report the 3 summary value.
+     */
+    void SummaryReport();
+
     typedef std::map<int,Node*> graphmap;
   protected:
     graphmap graph_;
@@ -199,6 +203,11 @@ namespace triplet{
     int numEdge;
     int numNode;
     int maxNode; //Max node id
+
+    /* TODO: Record accuracy. */
+    float total_computation_cost; //Summary of computation cost
+    float total_memory_cost; //Summary of memory cost
+    float total_edge_weight; //Summary of edge weight
   };
 }
 

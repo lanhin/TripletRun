@@ -78,7 +78,7 @@ namespace triplet{
       global_graph.AddNode(id1, comDmd1, dataDmd1);
       idset.insert(id1);
 
-#if DEBUG
+#if 0
       std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<std::endl;
 #endif
     }
@@ -90,13 +90,16 @@ namespace triplet{
       std::string comCost = root["edges"][index].get("weight", "-1").asString();
       int src1 = std::stoi(src);
       int dst1 = std::stoi(dst);
-      int comCost1 = std::stoi(comCost);
+      float comCost1 = std::stof(comCost);
       global_graph.AddEdge(src1, dst1, comCost1);
 
-#if DEBUG
+#if 0
       std::cout<<"Edge "<<src1<<" -> "<<dst1<<", cost: "<<global_graph.GetComCost(src1, dst1)<<std::endl;
 #endif
     }
+
+    // Summary report of the graph
+    global_graph.SummaryReport();
 #if 0
     // Check the constructed graph
     for (int index = 0; index < root["nodes"].size(); index++){
@@ -148,7 +151,7 @@ namespace triplet{
 
       int id1 = std::stoi(id);
       float compute1 = std::stof(compute, 0);
-      int RAM1 = std::stoi(RAM);
+      float RAM1 = std::stof(RAM);
       float bw1 = std::stof(bw, 0);
       int loc1 = std::stoi(loc);
 
@@ -196,7 +199,7 @@ namespace triplet{
       int pend = global_graph.GetNode(*iter)->GetInNum();
       assert(pend >= 0);
 
-#ifdef DEBUG
+#if 0
       std::cout<<"Node id "<<*iter<<", pending number:"<<pend<<std::endl;
 #endif
 
@@ -1124,7 +1127,7 @@ namespace triplet{
      */
     bool dead_loop = true;
     for (auto& it : TaihuLight) {
-      if ( (it.second)->GetFreeRAM() >= min_data_demand ){
+      if ( (it.second)->GetFreeRAM() >= min_data_demand + ZERO_POSITIVE){
 	dead_loop = false;
       }
     }

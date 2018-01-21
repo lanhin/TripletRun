@@ -184,6 +184,10 @@ namespace triplet{
     numEdge = 0;
     numNode = 0;
     maxNode = -1;
+
+    total_computation_cost = 0.0;
+    total_memory_cost = 0.0;
+    total_edge_weight = 0.0;
   }
 
   Graph::~Graph(){
@@ -227,12 +231,16 @@ namespace triplet{
     graph_[id] = node;
     numNode++;
     maxNode = std::max(maxNode, id);
+
+    // Record the total computation and memory cost
+    total_computation_cost += comDmd;
+    total_memory_cost += dataDmd;
   }
 
   /** Add an edge from src to dst.
       comCost: communication cost
   */
-  void Graph::AddEdge(int src, int dst, int comCost){
+  void Graph::AddEdge(int src, int dst, float comCost){
     assert(src >= 0);
     assert(dst >= 0);
 
@@ -247,6 +255,10 @@ namespace triplet{
 
     // Record the communication cost
     comCostMap[std::make_pair(src, dst)] = comCost;
+
+    if (comCost >= ZERO_NEGATIVE){
+      total_edge_weight += comCost;
+    }
 
     numEdge++;
   }
@@ -339,4 +351,13 @@ namespace triplet{
     numEdge = 0;
     numNode = 0;
   }
+
+  /** Report the 3 summary value.
+   */
+  void Graph::SummaryReport(){
+    std::cout<<"Total computation cost:"<<this->total_computation_cost<<std::endl;
+    std::cout<<"Total memory cost:"<<this->total_memory_cost<<std::endl;
+    std::cout<<"Total communication cost:"<<this->total_edge_weight<<std::endl;
+  }
+
 }
