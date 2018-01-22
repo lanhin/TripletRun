@@ -8,6 +8,11 @@
 #include "graph.h"
 #include "runtime.h"
 #include <iostream>
+#include <ctime>
+#include <cassert>
+#include <cstring>
+// TODO: conditional include?
+#include <getopt.h>
 
 const char* StatusArray[] = {
   "FREE",
@@ -48,32 +53,79 @@ void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
 
 int main(int argc, char *argv[])
 {
-  // Create and init devices
-  triplet::Device deva(0, 1.0, 2048, 96.0, 0);
+  // Start information
+  std::cout<<"TripletRun 0.0.1 alpha"<<std::endl;
+  time_t now = time(0);
+  char* dt = ctime(&now);
+  std::cout<<dt<<std::endl;
 
-  //ShowDeviceInfo(deva);
+  // Command
 
-  // Read and init graph
-  triplet::Graph gra;
-  std::set<int> idset;
-  gra.AddNode(0);
-  gra.AddNode(1, 10.0, 2048.0);
-  gra.GetNode(0)->SetCompDmd(8.8);
-  gra.GetNode(0)->SetDataDmd(6.6);
+  triplet::SchedulePolicy scheduler = triplet::HSIP;
+  const char* graphfile = "graph.json";
+  const char* clusterfile = "cluster.json";
 
-  gra.AddEdge(0, 1);
+  int c;
+  int digit_optind = 0;
 
-  idset.insert(0);
-  idset.insert(1);
+  while (1) {
+    int this_option_optind = optind ? optind : 1;
+    int option_index = 0;
+    static struct option long_options[] = {
+      {"graph", 1, 0, 'g'},
+      {"cluster", 1, 0, 'c'},
+      {"scheduler", 1, 0, 's'},
+      {0, 0, 0, 0}
+    };
 
-  //ShowGraphInfo(gra, idset);
+    c = getopt_long(argc, argv, "c:g:s:",
+		    long_options, &option_index);
+    if (c == -1)
+      break;
 
-  // Process the graph
+    switch (c) {
+    case 'c':
+      assert(optarg);
+      clusterfile = optarg;
+      std::cout<<"Set cluster file: "<<clusterfile<<std::endl;
+    case 'g':
+      assert(optarg);
+      graphfile = optarg;
+      std::cout<<"Set graph file: "<<graphfile<<std::endl;
+    case 's':
+      assert(optarg);
+      if(strcmp("RR", optarg) == 0 || strcmp("rr", optarg) == 0){
+	scheduler = triplet::RR;
+	std::cout<<"scheduler RR"<<std::endl;
+      }else if(strcmp("FCFS", optarg) == 0 || strcmp("fcfs", optarg) == 0){
+	scheduler = triplet::FCFS;
+	std::cout<<"scheduler FCFS"<<std::endl;
+      }else if(strcmp("SJF", optarg) == 0 || strcmp("sjf", optarg) == 0){
+	scheduler = triplet::SJF;
+	std::cout<<"scheduler SJF"<<std::endl;
+      }else if(strcmp("PEFT", optarg) == 0 || strcmp("peft", optarg) == 0){
+	scheduler = triplet::PEFT;
+	std::cout<<"scheduler PEFT"<<std::endl;
+      }else if(strcmp("HSIP", optarg) == 0 || strcmp("hsip", optarg) == 0){
+	scheduler = triplet::RR;
+	std::cout<<"scheduler RR"<<std::endl;
+      }
+    }
+  }
+
+  if (optind < argc) {
+    std::cout<<"non-option ARGV-elements: ";
+    while (optind < argc)
+      std::cout<<argv[optind++];
+    std::cout<<std::endl;
+  }
+
+
 
   triplet::Runtime rt;
-  rt.InitGraph("graph.json");
-  rt.InitCluster("cluster.json");
-  rt.InitRuntime();
+  rt.InitGraph(graphfile);
+  rt.InitCluster(clusterfile);
+  rt.InitRuntime(scheduler);
   rt.Execute();
   
   return 0;

@@ -205,11 +205,11 @@ namespace triplet{
   /** Init the runtime data structures: pending_list and ready_queue
       and calculate the OCT, RankOCT of the graph.
   */
-  void Runtime::InitRuntime(){
+  void Runtime::InitRuntime(SchedulePolicy sch){
     log_start("Runtime initialization...");
 
     // TODO: Set Scheduler according to the command options.
-    Scheduler = HSIP;
+    Scheduler = sch;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
 
     // Init ready_queue

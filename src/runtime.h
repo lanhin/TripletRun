@@ -82,7 +82,7 @@ namespace triplet{
     /** Init the runtime data structures: pending_list and ready_queue
 	and calculate the OCT, RankOCT of the graph.
      */
-    void InitRuntime();
+    void InitRuntime(SchedulePolicy sch = PEFT);
 
     /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
 	This function cannot be moved into class Graph
