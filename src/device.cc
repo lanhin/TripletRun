@@ -335,6 +335,8 @@ namespace triplet{
 
   // The Connections class
   Connections::Connections(){
+    NodeConNum = 0;
+    DevConNum = 0;
   }
 
   Connections::~Connections(){
@@ -362,8 +364,10 @@ namespace triplet{
     
     if (BetweenNode){
       NodeConnection[std::pair<int, int>(src, dst)] = bw;
+      NodeConNum++;
     }else{
       DeviceConnection[std::pair<int, int>(src, dst)] = bw;
+      DevConNum++;
     }
     
   }
@@ -399,6 +403,19 @@ namespace triplet{
 
     }
   }
+
+  /** Return NodeConNum
+   */
+  int Connections::GetNodeConNum(){
+    return this->NodeConNum;
+  }
+
+  /** Return DevConNum
+   */
+  int Connections::GetDevConNum(){
+    return this->DevConNum;
+  }
+
 
   /** Clean all the connections.
    */

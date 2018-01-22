@@ -192,11 +192,21 @@ namespace triplet{
      */
     float GetBw(int src, int dst, bool BetweenNode=false); //Get bandwidth
 
+    /** Return NodeConNum
+     */
+    int GetNodeConNum();
+
+    /** Return DevConNum
+     */
+    int GetDevConNum();
+
     /** Clean all the connections.
      */
     void Clear();
 
   protected:
+    int NodeConNum;
+    int DevConNum;
     connection NodeConnection;
     connection DeviceConnection;
   };

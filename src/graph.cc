@@ -355,9 +355,14 @@ namespace triplet{
   /** Report the 3 summary value.
    */
   void Graph::SummaryReport(){
-    std::cout<<"Total computation cost:"<<this->total_computation_cost<<std::endl;
-    std::cout<<"Total memory cost:"<<this->total_memory_cost<<std::endl;
-    std::cout<<"Total communication cost:"<<this->total_edge_weight<<std::endl;
+    std::cout<<"-------- Graph information --------"<<std::endl;
+    std::cout<<" Total computation cost: "<<this->total_computation_cost<<std::endl;
+    std::cout<<" Total memory cost: "<<this->total_memory_cost<<std::endl;
+    std::cout<<" Total communication cost: "<<this->total_edge_weight<<std::endl;
+    std::cout<<" Total nodes: "<<this->numNode<<std::endl;
+    std::cout<<" Total edges: "<<this->numEdge<<std::endl;
+    std::cout<<" Max node id: "<<this->maxNode<<std::endl;
+    std::cout<<"-----------------------------------"<<std::endl;
   }
 
 }

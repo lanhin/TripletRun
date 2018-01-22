@@ -189,6 +189,7 @@ namespace triplet{
 
     /* TODO: move this idset into class graph? */
     std::set<int> idset;  //Node id set
+    std::set<int> computerset; //computer node set
     std::vector<int> ready_queue; // nodeid
     std::map<int, int> running_history; //nodeid -> deviceid
     std::map<int, float> execution_queue; // nodeid -> execution finish time

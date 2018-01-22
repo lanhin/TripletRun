@@ -7,6 +7,7 @@
 #include "runtime.h"
 #include "constants.h"
 #include "json/json.h"
+#include "utils.h"
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -50,6 +51,8 @@ namespace triplet{
     Json::CharReaderBuilder reader;
     std::string errs;
     Json::Value root;
+
+    log_start("Graph initialization...");
 
     // check if the json file exists
     if (access(graphFile, F_OK) != 0){
@@ -116,6 +119,8 @@ namespace triplet{
       std::cout<<"==========================="<<std::endl;
     }
 #endif
+
+    log_end("Graph initialization.");
   }
 
   /** Init the cluster "TaihuLight" from configure file.
@@ -124,6 +129,8 @@ namespace triplet{
     Json::CharReaderBuilder reader;
     std::string errs;
     Json::Value root;
+
+    log_start("Cluster initialization...");
 
     // check if the json file exists
     if (access(clusterFile, F_OK) != 0){
@@ -162,6 +169,7 @@ namespace triplet{
       TaihuLight[id1] = dev;
       deviceNum ++;
       max_devId = std::max(max_devId, id1);
+      computerset.insert(loc1);
     }
 
     for (int index = 0; index < root["links"].size(); index++){
@@ -183,13 +191,23 @@ namespace triplet{
     }
 
     //TODO: Check the constructed cluster
+    std::cout<<"-------- Cluster information --------"<<std::endl;
+    std::cout<<" Total devices: "<<this->deviceNum<<std::endl;
+    std::cout<<" Max device id: "<<this->max_devId<<std::endl;
+    std::cout<<" Total computer nodes: "<<this->computerset.size()<<std::endl;
+    std::cout<<" Links among computer nodes: "<<this->TaihuLightNetwork.GetNodeConNum()<<std::endl;
+    std::cout<<" Links among devices: "<<this->TaihuLightNetwork.GetDevConNum()<<std::endl;
+    std::cout<<"-------------------------------------"<<std::endl;
 
+    log_end("Cluster initialization.");
   }
 
   /** Init the runtime data structures: pending_list and ready_queue
       and calculate the OCT, RankOCT of the graph.
   */
   void Runtime::InitRuntime(){
+    log_start("Runtime initialization...");
+
     // TODO: Set Scheduler according to the command options.
     Scheduler = HSIP;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
@@ -209,11 +227,24 @@ namespace triplet{
 	ready_queue.push_back(*iter);
       }
     }
-    CalcOCT(); //OCT for PEFT
-    CalcRankOCT(); //RankOCT for PEFT
 
+    log_start("OCT calculation...");
+    CalcOCT(); //OCT for PEFT
+    log_end("OCT calculation.");
+
+    log_start("Rank OCT calculation...");
+    CalcRankOCT(); //RankOCT for PEFT
+    log_end("Rank OCT calculation.");
+
+    log_start("OCCW initialization...");
     global_graph.InitAllOCCW(); //OCCW for HSIP
+    log_end("OCCW initialization.");
+
+    log_start("Rank_u calculation...");
     CalcRank_u(); // Rank_u for HSIP
+    log_end("Rank_u calculation.");
+
+    log_end("Runtime initialization.");
   }
 
   /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
@@ -345,7 +376,7 @@ namespace triplet{
 
     /** 3. Check the OCT if the macro DEBUG is defined.
      */
-#ifdef DEBUG
+#if 0
     std::cout<<"The OCT result:"<<std::endl;
     for (int i = 0; i < tasks; i++) {
       for (int j = 0; j < devs; j++) {
@@ -367,7 +398,7 @@ namespace triplet{
       }
       nd->SetRankOCT( ((float)rowOCT)/this->deviceNum );
 
-#ifdef DEBUG
+#if 0
       std::cout<<"Vertex "<<ndId<<", rank oct: "<<nd->GetRankOCT()<<std::endl;
 #endif
     }
@@ -490,6 +521,8 @@ namespace triplet{
    */
   // TODO: Count the schduling time itself
   void Runtime::Execute(){
+    log_start("Execution...");
+
     // Execute until all three queues/lists are empty
     while (!ready_queue.empty() || !execution_queue.empty() || !block_free_queue.empty()) {
       /** 0. if a memory block's refer number can be decreased
@@ -516,7 +549,7 @@ namespace triplet{
 	  update pending_list, cluster and ready_queue
        */
       std::map<int, float>::iterator it = execution_queue.begin();
-      for (; it != execution_queue.end(); it++){
+      for (; it != execution_queue.end();){
 	if (it->second <= (global_timer + ZERO_POSITIVE)){
 	  
 	  // Set free the corresponding device
@@ -555,7 +588,7 @@ namespace triplet{
 	  }
 
 	  // erase the task from execution_queue
-	  execution_queue.erase(it);
+	  execution_queue.erase(it++);
 
 #if 0
 	  // Output the execution_queue to check its contents
@@ -564,9 +597,10 @@ namespace triplet{
 	  for (auto& x: execution_queue)
 	    std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
 #endif
+	}else{
+	  it++;
 	}
       }
-      
       /** 2. If the ready queue is not empty, process a new task from it
 	  and update global_timer, deviceInUse
        */
@@ -602,6 +636,7 @@ namespace triplet{
 	if ( dev == NULL ){
 	  if ( DeadLoopDetect() ){
 	    SimulationReport();
+	    log_error("Execution interrupted, for dead loop detected.");
 	    exit(1);
 	  }
 	  ready_queue.push_back(task_node_id);
@@ -693,6 +728,8 @@ namespace triplet{
     // Finish running
     // Write simulation report.
     SimulationReport();
+
+    log_end("Execution.");
   }
 
   /** Pick a task from ready queue according to the
@@ -1008,7 +1045,9 @@ namespace triplet{
       data_transmission_time = std::max(ct, data_transmission_time);
     }
 
+#ifdef DEBUG
     std::cout<<"Data transmission time: "<<data_transmission_time<<std::endl;
+#endif
 
     return data_transmission_time;
   }
@@ -1134,7 +1173,7 @@ namespace triplet{
 
     if (dead_loop){
       // Dead loop report
-      std::cout<<"\n****** Emergency! Dead loop detected ******"<<std::endl;
+      std::cout<< RED <<"\n****** Emergency! Dead loop detected ******"<< RESET <<std::endl;
       /** 1. Every device's free RAM size.
        */
       for (auto& it : TaihuLight) {
@@ -1151,7 +1190,7 @@ namespace triplet{
       for (auto& it : ready_queue) {
 	std::cout<<"| Node "<<it<<", data demand:"<<global_graph.GetNode(it)->GetDataDmd()<<std::endl;
       }
-      std::cout<<"******************"<<std::endl;
+      std::cout<< RED <<"******************"<< RESET <<std::endl;
     }
 
     return dead_loop;
@@ -1160,8 +1199,8 @@ namespace triplet{
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
-    std::cout<<"****** Simulation Report ******"<<std::endl;
-    std::cout<<"Global timer:"<<global_timer<<std::endl;
+    std::cout<<"-------- Simulation Report --------"<<std::endl;
+    std::cout<<" Global timer:"<<global_timer<<std::endl;
 
     int devId, tasks;
     float occupyTime, dataTransTime;
@@ -1174,8 +1213,9 @@ namespace triplet{
       assert(devId >= 0);
       assert(occupyTime >= 0.0);
 
-      std::cout<<"Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<std::endl;
+      std::cout<<" Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<std::endl;
     }
+    std::cout<<"-----------------------------------"<<std::endl;
 
   }
 
