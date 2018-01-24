@@ -517,6 +517,18 @@ namespace triplet{
     }
   }
 
+  /** Calculate normalized degree of node.
+   */
+  float Runtime::NDON(Node * nd){
+    float normdegree = 0;
+    for (auto it : nd->output) {
+      Node * succNd = global_graph.GetNode(it);
+      normdegree += 1 / (float)succNd->GetInNum();
+    }
+    std::cout<<"Norm degree of node "<<nd->GetId()<<": "<<normdegree<<std::endl;
+    return normdegree;
+  }
+
   /** The whole execution logic.
    */
   // TODO: Count the schduling time itself
@@ -555,8 +567,8 @@ namespace triplet{
 	  // Set free the corresponding device
 	  Node* nd = global_graph.GetNode(it->first);
 	  int devId = nd->GetOccupied();
-#ifdef DEBUG
-	  std::cout<<"Node "<<it->first<<" finished execution. It used device "<<devId<<std::endl;
+#if 1
+	  std::cout<<"Node "<<it->first<<" finished execution at "<<global_timer<< ". It used device "<<devId<<std::endl;
 #endif
 	  // Set the finished_tasks properly
 	  TaihuLight[devId]->IncreaseTasks(1);
@@ -708,10 +720,13 @@ namespace triplet{
 	std::cout<<"Block free queue: "<<std::endl;
 	for (auto& x: block_free_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
-
+#endif
+#if 1
 	//Debug
 	std::cout<<"Schedule node "<<task_node_id<<" onto Device "<<dev->GetId();
 	std::cout<<", global time = "<<global_timer<<" s, expected transmission time = "<<transmission_time<<" s, execution time = "<<execution_time<<" s."<<std::endl;
+#endif
+#if 0
 	std::cout<<"Device ava time updated to: "<<dev->GetAvaTime()<<"s, Node AFT updated to: "<<nd->GetAFT()<<std::endl;
 #endif
       }
@@ -807,6 +822,23 @@ namespace triplet{
     }
       break;
 
+    case DONF:{
+      float maxOutDegree = -1;
+      std::vector<int>::iterator iter = ready_queue.begin();
+      std::vector<int>::iterator maxIter; // Point to the task with max out degree.
+      for (; iter != ready_queue.end(); iter++){
+	Node* nd = global_graph.GetNode(*iter);
+	float degree = NDON(nd);
+	if (maxOutDegree < degree){
+	  maxOutDegree = degree;
+	  maxIter = iter;
+	  taskIdx = *iter;
+	}
+      }
+      ready_queue.erase(maxIter);
+    }
+      break;
+
     case MULTILEVEL:
       break;
 
@@ -882,6 +914,7 @@ namespace triplet{
       }
       break;
 
+    case DONF:
     case HSIP:
     case PEFT:{
       /** Traverse all the devices,

@@ -23,6 +23,7 @@ namespace triplet{
     PRIORITY, // Priority, pick the priority most task and put it on the fastest device
     PEFT,
     HSIP,
+    DONF, // Degree of node first
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
@@ -104,6 +105,10 @@ namespace triplet{
 	Before call this, remember to call graph.InitAllOCCW()
      */
     void CalcRank_u();
+
+    /** Calculate normalized degree of node.
+     */
+    float NDON(Node * nd);
 
     /** The whole execution logic.
      */

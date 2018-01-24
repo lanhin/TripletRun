@@ -51,6 +51,19 @@ void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
   std::cout<<"==========================="<<std::endl;
 }
 
+/** Output usage of tripletrun.
+ */
+void Usage(){
+  std::cout<<"Usage: ./triplet [options]"<<std::endl;
+  std::cout<<"\tOptions:"<<std::endl;
+  std::cout<<"\t-h, --help: output this usage message."<<std::endl;
+  std::cout<<"\t-g, --graph <graphfile>: set graph file."<<std::endl;
+  std::cout<<"\t-c, --cluster <clusterfile>: set cluster file."<<std::endl;
+  std::cout<<"\t-s, --scheduler <policy>: set schduling policy."<<std::endl<<std::endl;
+
+  std::cout<<"\tScheduler supported: RR, FCFS, SJF, PEFT, HSIP, DONF"<<std::endl;
+}
+
 int main(int argc, char *argv[])
 {
   // Start information
@@ -72,13 +85,14 @@ int main(int argc, char *argv[])
     int this_option_optind = optind ? optind : 1;
     int option_index = 0;
     static struct option long_options[] = {
+      {"help", 0, 0, 'h'},
       {"graph", 1, 0, 'g'},
       {"cluster", 1, 0, 'c'},
       {"scheduler", 1, 0, 's'},
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "c:g:s:",
+    c = getopt_long(argc, argv, "c:g:hs:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -88,10 +102,16 @@ int main(int argc, char *argv[])
       assert(optarg);
       clusterfile = optarg;
       std::cout<<"Set cluster file: "<<clusterfile<<std::endl;
+      break;
     case 'g':
       assert(optarg);
       graphfile = optarg;
       std::cout<<"Set graph file: "<<graphfile<<std::endl;
+      break;
+    case 'h':
+      Usage();
+      exit(0);
+      break;
     case 's':
       assert(optarg);
       if(strcmp("RR", optarg) == 0 || strcmp("rr", optarg) == 0){
@@ -108,8 +128,14 @@ int main(int argc, char *argv[])
 	std::cout<<"scheduler PEFT"<<std::endl;
       }else if(strcmp("HSIP", optarg) == 0 || strcmp("hsip", optarg) == 0){
 	scheduler = triplet::RR;
-	std::cout<<"scheduler RR"<<std::endl;
+	std::cout<<"scheduler HSIP"<<std::endl;
+      }else if(strcmp("DONF", optarg) == 0 || strcmp("donf", optarg) == 0){
+	scheduler = triplet::DONF;
+	std::cout<<"scheduler DONF"<<std::endl;
       }
+      break;
+    default:
+      std::cout<<"Option processing error!"<<std::endl;
     }
   }
 
