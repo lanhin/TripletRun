@@ -200,6 +200,10 @@ namespace triplet{
      */
     int GetDevConNum();
 
+    /** Get the mean bandwidth.
+     */
+    float GetMeanBW();
+
     /** Clean all the connections.
      */
     void Clear();
@@ -207,6 +211,7 @@ namespace triplet{
   protected:
     int NodeConNum;
     int DevConNum;
+    float MeanBW; // Mean Bandwidth
     connection NodeConnection;
     connection DeviceConnection;
   };

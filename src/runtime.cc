@@ -356,7 +356,8 @@ namespace triplet{
 	      if(OCT[vertex->GetId()][dev.first] < 0){ // The OCT item has not been calculated
 		continue;
 	      }else{
-		current = OCT[vertex->GetId()][dev.first] + std::max(((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower(), (float)1.0) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
+		float meanct = CommunicationDataSize(crtVertId, vertId) / TaihuLightNetwork.GetMeanBW();
+		current = OCT[vertex->GetId()][dev.first] + std::max(((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower(), (float)1.0) + ((dev.first == devId)?0:meanct);
 		//current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
 		if (min > current || min < 0)
 		  min = current;

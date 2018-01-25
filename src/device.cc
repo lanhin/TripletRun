@@ -337,6 +337,7 @@ namespace triplet{
   Connections::Connections(){
     NodeConNum = 0;
     DevConNum = 0;
+    MeanBW = 0;
   }
 
   Connections::~Connections(){
@@ -369,6 +370,8 @@ namespace triplet{
       DeviceConnection[std::pair<int, int>(src, dst)] = bw;
       DevConNum++;
     }
+
+    MeanBW += (bw - MeanBW) / (NodeConNum + DevConNum);
     
   }
 
@@ -416,6 +419,11 @@ namespace triplet{
     return this->DevConNum;
   }
 
+  /** Get the mean bandwidth.
+   */
+  float Connections::GetMeanBW(){
+    return this->MeanBW;
+  }
 
   /** Clean all the connections.
    */
