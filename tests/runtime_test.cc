@@ -29,13 +29,13 @@ TEST(RuntimeTest, BasicOperations){
 
   rt.InitRuntime();
 
-  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetRank_u(), 32.1785113);
-  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetRank_u(), 16.54997194);
-  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetRank_u(), 15.35355339);
-  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetRank_u(), 4.31426968);
-  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetRank_u(), 5.19641855);
-  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetRank_u(), 4.31426968);
-  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetRank_u(), 0.15713484);
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetRank_u_HSIP(), 32.1785113);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetRank_u_HSIP(), 16.54997194);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetRank_u_HSIP(), 15.35355339);
+  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetRank_u_HSIP(), 4.31426968);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetRank_u_HSIP(), 5.19641855);
+  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetRank_u_HSIP(), 4.31426968);
+  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetRank_u_HSIP(), 0.15713484);
 
   rt.EntryTaskDuplication(gr.GetNode(0));
 
@@ -45,6 +45,9 @@ TEST(RuntimeTest, BasicOperations){
   EXPECT_FLOAT_EQ(sugon[0]->GetAvaTime(), 1.25);
   EXPECT_FLOAT_EQ(sugon[1]->GetAvaTime(), 2.5);
   EXPECT_FLOAT_EQ(sugon[3]->GetAvaTime(), 1.6666667);
+
+  triplet::Connections mellanox = rt.GetConnections();
+  EXPECT_FLOAT_EQ(mellanox.GetMeanBW(), 12);
 
   std::map<int, float> eq = rt.GetExeQueue();
   EXPECT_EQ(eq.size(), 1);

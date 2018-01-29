@@ -55,7 +55,12 @@ namespace triplet{
     /** Set rank_u of the node,
 	which is used in HSIP policy.
     */
-    void SetRank_u(float rank);
+    void SetRank_u_HSIP(float rank);
+
+    /** Set rank_u of the node,
+	which is used in HEFT policy.
+    */
+    void SetRank_u_HEFT(float rank);
 
     /** Set actual finish time (AFT) of the node.
      */
@@ -99,7 +104,13 @@ namespace triplet{
     /** Get rank_u of the node,
 	used in HSIP policy.
     */
-    float GetRank_u();
+    float GetRank_u_HSIP();
+
+    /** Get rank_u of the node,
+	used in HEFT policy.
+    */
+    float GetRank_u_HEFT();
+
 
     /** Get actual finish time (AFT) of the node.
      */
@@ -134,7 +145,8 @@ namespace triplet{
     float mean_weight;
     float occw; /** occw: out-degree communication cost weight */
     float rank_OCT; // Used in PEFT as the priority.
-    float rank_u; // Used in HSIP policy
+    float rank_u_HSIP; // Used in HSIP policy
+    float rank_u_HEFT; // Used in HEFT policy
     float AFT; // The actual finish time of this node
   };
 

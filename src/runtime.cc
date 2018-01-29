@@ -208,7 +208,7 @@ namespace triplet{
   void Runtime::InitRuntime(SchedulePolicy sch){
     log_start("Runtime initialization...");
 
-    // TODO: Set Scheduler according to the command options.
+    std::cout<<"Scheduler: "<<sch<<std::endl;
     Scheduler = sch;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
 
@@ -357,6 +357,7 @@ namespace triplet{
 		continue;
 	      }else{
 		float meanct = CommunicationDataSize(crtVertId, vertId) / TaihuLightNetwork.GetMeanBW();
+		// The max op is for avoiding calculation time ignorance
 		current = OCT[vertex->GetId()][dev.first] + std::max(((float)vertex->GetCompDmd()) / (dev.second)->GetCompPower(), (float)1.0) + ((dev.first == devId)?0:meanct);
 		//current = OCT[vertex->GetId()][dev.first] + (CTM[vertId][dev.first]) + ((dev.first == devId)?0:global_graph.GetComCost(crtVertId, vertId));
 		if (min > current || min < 0)
@@ -469,11 +470,12 @@ namespace triplet{
     */
 
     std::set<int> recent; // Store the vertex ids that calculated recently
-    float rank;
+    float rank_HSIP, rank_HEFT;
     // 2.1 Calculate sink node's rank_u
     Node* nd = global_graph.GetNode(sinkId);
-    rank = CalcWeightMeanSD(sinkId);
-    nd->SetRank_u(rank);
+    rank_HSIP = CalcWeightMeanSD(sinkId);
+    nd->SetRank_u_HSIP(rank_HSIP);
+    nd->SetRank_u_HEFT(nd->GetMeanWeight());
     recent.insert(sinkId);
 
     // 2.2 Calculate all the others
@@ -485,7 +487,7 @@ namespace triplet{
 
 	Node* crtNd = global_graph.GetNode(crtVertId);
 	// 2.2.0 If it has already been calculated, continue
-	if (crtNd->GetRank_u() >= 0){
+	if (crtNd->GetRank_u_HSIP() >= 0){
 	  continue;
 	}
 
@@ -493,7 +495,7 @@ namespace triplet{
 	bool allSatisfied = true;
 	for(auto& succ : crtNd->output){
 	  Node* succNd = global_graph.GetNode(succ);
-	  if (succNd->GetRank_u() < 0){
+	  if (succNd->GetRank_u_HSIP() < 0){
 	    allSatisfied = false;    
 	  }
 	}
@@ -502,15 +504,24 @@ namespace triplet{
 	}
 
 	// 2.2.2 Calculate rank_u for current vertex
-	float max_ranku = 0;
+	float max_ranku_HSIP = 0;
+	float max_ranku_HEFT = 0;
+	float tmp_ranku;
 	for(auto& succ : crtNd->output){
 	  Node* succNd = global_graph.GetNode(succ);
-	  if (max_ranku < (succNd->GetRank_u()) ){
-	    max_ranku = succNd->GetRank_u();
+	  if (max_ranku_HSIP < (succNd->GetRank_u_HSIP()) ){
+	    max_ranku_HSIP = succNd->GetRank_u_HSIP();
+	  }
+
+	  tmp_ranku = CommunicationDataSize(crtVertId, succ) / TaihuLightNetwork.GetMeanBW() + succNd->GetRank_u_HEFT();
+	  if (max_ranku_HEFT < tmp_ranku){
+	    max_ranku_HEFT = tmp_ranku;
 	  }
 	}
-	rank = CalcWeightMeanSD(crtVertId) + crtNd->GetOCCW() + max_ranku;
-	crtNd->SetRank_u(rank);
+	rank_HSIP = CalcWeightMeanSD(crtVertId) + crtNd->GetOCCW() + max_ranku_HSIP;
+	rank_HEFT = crtNd->GetMeanWeight() + max_ranku_HEFT;
+	crtNd->SetRank_u_HSIP(rank_HSIP);
+	crtNd->SetRank_u_HEFT(rank_HEFT);
 
 	// 2.2.3 Add crtVertId into recent after calculation
 	recent.insert(crtVertId);
@@ -795,6 +806,7 @@ namespace triplet{
     case PRIORITY:
       break;
 
+    case HEFT:
     case HSIP:
     case PEFT:{
       /** Traverse all the tasks in the ready queue,
@@ -811,9 +823,15 @@ namespace triplet{
 	    maxIter = iter;
 	    taskIdx = *iter;
 	  }
-	}else{ //HSIP
-	  if (maxPriority < nd->GetRank_u()){
-	    maxPriority = nd->GetRank_u();
+	}else if(Scheduler == HSIP){ //HSIP
+	  if (maxPriority < nd->GetRank_u_HSIP()){
+	    maxPriority = nd->GetRank_u_HSIP();
+	    maxIter = iter;
+	    taskIdx = *iter;
+	  }
+	}else{ //HEFT
+	  if (maxPriority < nd->GetRank_u_HEFT()){
+	    maxPriority = nd->GetRank_u_HEFT();
 	    maxIter = iter;
 	    taskIdx = *iter;
 	  }
@@ -916,6 +934,7 @@ namespace triplet{
       break;
 
     case DONF:
+    case HEFT:
     case HSIP:
     case PEFT:{
       /** Traverse all the devices,
@@ -1265,6 +1284,13 @@ namespace triplet{
   */
   Cluster Runtime::GetCluster(){
     return TaihuLight;
+  }
+
+  /** Return TaihuLightNetwork.
+      Just for testing.
+  */
+  Connections Runtime::GetConnections(){
+    return TaihuLightNetwork;
   }
 
   /** Return the execution_queue.

@@ -21,6 +21,7 @@ namespace triplet{
     SJF, // Shortest job first, pick the shortest task and put it on the fastest free device
     RR, // Round robin, pick the first task from the ready queue and put it on the next free device
     PRIORITY, // Priority, pick the priority most task and put it on the fastest device
+    HEFT,
     PEFT,
     HSIP,
     DONF, // Degree of node first
@@ -167,6 +168,11 @@ namespace triplet{
 	Just for testing.
      */
     Cluster GetCluster();
+
+    /** Return TaihuLightNetwork.
+	Just for testing.
+     */
+    Connections GetConnections();
 
     /** Return the execution_queue.
 	Just for testing.

@@ -127,11 +127,17 @@ int main(int argc, char *argv[])
 	scheduler = triplet::PEFT;
 	std::cout<<"scheduler PEFT"<<std::endl;
       }else if(strcmp("HSIP", optarg) == 0 || strcmp("hsip", optarg) == 0){
-	scheduler = triplet::RR;
+	scheduler = triplet::HSIP;
 	std::cout<<"scheduler HSIP"<<std::endl;
       }else if(strcmp("DONF", optarg) == 0 || strcmp("donf", optarg) == 0){
 	scheduler = triplet::DONF;
 	std::cout<<"scheduler DONF"<<std::endl;
+      }else if(strcmp("HEFT", optarg) == 0 || strcmp("heft", optarg) == 0){
+	scheduler = triplet::HEFT;
+	std::cout<<"scheduler HEFT"<<std::endl;
+      }else{
+	std::cout<<"Error: cannot identify scheduler "<<optarg<<std::endl;
+	exit(1);
       }
       break;
     default:

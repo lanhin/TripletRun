@@ -372,7 +372,6 @@ namespace triplet{
     }
 
     MeanBW += (bw - MeanBW) / (NodeConNum + DevConNum);
-    
   }
 
   /** Get bandwidth

@@ -12,13 +12,14 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0),rank_u(-1), mean_weight(-1.0) {}
+    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0) {}
   Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
     data_demand = dataDmd;
     rank_OCT = 0;
-    rank_u = -1;
+    rank_u_HSIP = -1;
+    rank_u_HEFT = -1;
     mean_weight = -1.0;
   }
 
@@ -88,8 +89,15 @@ namespace triplet{
   /** Set rank_u of the node,
       which is used in HSIP policy.
   */
-  void Node::SetRank_u(float rank){
-    rank_u = rank;
+  void Node::SetRank_u_HSIP(float rank){
+    rank_u_HSIP = rank;
+  }
+
+  /** Set rank_u of the node,
+      which is used in HEFT policy.
+  */
+  void Node::SetRank_u_HEFT(float rank){
+    rank_u_HEFT = rank;
   }
 
   /** Set actual finish time (AFT) of the node.
@@ -154,8 +162,15 @@ namespace triplet{
   /** Get rank_u of the node,
       used in HSIP policy.
   */
-  float Node::GetRank_u(){
-    return rank_u;
+  float Node::GetRank_u_HSIP(){
+    return rank_u_HSIP;
+  }
+
+  /** Get rank_u of the node,
+      used in HEFT policy.
+  */
+  float Node::GetRank_u_HEFT(){
+    return rank_u_HEFT;
   }
 
   /** Get actual finish time (AFT) of the node.
