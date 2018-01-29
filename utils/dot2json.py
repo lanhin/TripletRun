@@ -41,11 +41,12 @@ def jsonout(fileout, nodes, edges):
         outItem = "    ],\n    \"edges\":\n    [\n"
         result.write(outItem)
 
+        # Write edges
         for i in range(len(edges)-1):
-            outItem = "\t{\"src\":\""+edges[i][0]+"\",\n\t\"dst\":\""+edges[i][1]+"\",\n\t\"weight\":"+edges[i][2]+"\n\t},\n"
+            outItem = "\t{\"src\":\""+edges[i][0]+"\",\n\t\"dst\":\""+edges[i][1]+"\",\n\t\"weight\":\""+str(edges[i][2])+"\"\n\t},\n"
             result.write(outItem)
 
-        outItem = "\t{\"src\":\""+edges[-1][0]+"\",\n\t\"dst\":\""+edges[-1][1]+"\",\n\t\"weight\":"+edges[-1][2]+"\n\t}\n"
+        outItem = "\t{\"src\":\""+edges[-1][0]+"\",\n\t\"dst\":\""+edges[-1][1]+"\",\n\t\"weight\":\""+str(edges[-1][2])+"\"\n\t}\n"
         result.write(outItem)
 
         outItem = "    ]\n}\n"
@@ -69,8 +70,10 @@ with open(filein, "rb") as source:
             #print re.search('\"\d+\"', line).group()
             if re.search('\"\d+\"', line):
                 weight = re.search('\"\d+\"', line).group()
+                weight = weight[1:-1]
+                weight = float(weight) / 1024 #KB
             else:
-                weight = "-1"
+                weight = -1
             #print re.search('->', line).group()
             edges.append((src, dst, weight))
         else: # a node
@@ -84,29 +87,3 @@ with open(filein, "rb") as source:
 
             nodes.append((ndId, compCost))
 jsonout(fileout, nodes, edges)
-
-'''
-    outItem = "{\n    \"nodes\":\n    [\n"
-    result.write(outItem)
-
-    # Write nodes
-    for i in range(len(nodes)-1):
-        outItem = "\t{\"id\":\""+nodes[i][0]+"\",\n\t\"comDmd\":"+nodes[i][1]+"\n\t},\n"
-        result.write(outItem)
-
-    outItem = "\t{\"id\":\""+nodes[-1][0]+"\",\n\t\"comDmd\":"+nodes[-1][1]+"\n\t}\n"
-    result.write(outItem)
-
-    outItem = "    ],\n    \"edges\":\n    [\n"
-    result.write(outItem)
-
-    for i in range(len(edges)-1):
-        outItem = "\t{\"src\":\""+edges[i][0]+"\",\n\t\"dst\":\""+edges[i][1]+"\",\n\t\"weight\":"+edges[i][2]+"\n\t},\n"
-        result.write(outItem)
-
-    outItem = "\t{\"src\":\""+edges[-1][0]+"\",\n\t\"dst\":\""+edges[-1][1]+"\",\n\t\"weight\":"+edges[-1][2]+"\n\t}\n"
-    result.write(outItem)
-
-    outItem = "    ]\n}\n"
-    result.write(outItem)
-'''
