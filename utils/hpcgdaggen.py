@@ -4,8 +4,8 @@
 @2018-01  by lanhin
 
 Generate DAG of HPCG's kernel function (in json format).
-Usage: python2 hpcgDaggen.py
-The output file name is hpcg.json
+Usage: python2 hpcgDaggen.py [-n n] [-x x] [-y y]
+The output file name is hpcg_<n>x<x>x<y>.json
 '''
 
 import getopt
