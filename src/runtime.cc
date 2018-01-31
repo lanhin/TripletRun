@@ -74,14 +74,17 @@ namespace triplet{
     for (int index = 0; index < root["nodes"].size(); index++){
       std::string id = root["nodes"][index].get("id", "-1").asString();
       std::string computeDemand = root["nodes"][index].get("comDmd", "-1.0").asString();
-      std::string dataDemand = root["nodes"][index].get("dataDmd", "-1.0").asString();
+      std::string dataDemand = root["nodes"][index].get("dataDmd", "1.0").asString();
       int id1 = std::stoi(id);
       float comDmd1 = std::stof(computeDemand, 0);
       float dataDmd1 = std::stof(dataDemand, 0);
+      if (comDmd1 < 1){
+	comDmd1 = 0.1;
+      }
       global_graph.AddNode(id1, comDmd1, dataDmd1);
       idset.insert(id1);
 
-#if 0
+#if 1
       std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<std::endl;
 #endif
     }
@@ -212,22 +215,6 @@ namespace triplet{
     Scheduler = sch;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
 
-    // Init ready_queue
-    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
-      int pend = global_graph.GetNode(*iter)->GetInNum();
-      assert(pend >= 0);
-
-#if 0
-      std::cout<<"Node id "<<*iter<<", pending number:"<<pend<<std::endl;
-#endif
-
-      pending_list[*iter] = pend;
-
-      if (pend == 0){ //add it into ready_queue
-	ready_queue.push_back(*iter);
-      }
-    }
-
     log_start("OCT calculation...");
     CalcOCT(); //OCT for PEFT
     log_end("OCT calculation.");
@@ -243,6 +230,22 @@ namespace triplet{
     log_start("Rank_u calculation...");
     CalcRank_u(); // Rank_u for HSIP
     log_end("Rank_u calculation.");
+
+    // Init ready_queue
+    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
+      int pend = global_graph.GetNode(*iter)->GetInNum();
+      assert(pend >= 0);
+
+#if 0
+      std::cout<<"Node id "<<*iter<<", pending number:"<<pend<<std::endl;
+#endif
+
+      pending_list[*iter] = pend;
+
+      if (pend == 0){ //add it into ready_queue
+	ready_queue.push_back(*iter);
+      }
+    }
 
     log_end("Runtime initialization.");
   }
@@ -278,7 +281,7 @@ namespace triplet{
     if(exitVertexSet.size() > 1){ // Multiple exit vertices
       // create a new "sink" vertex
       sinkId = maxVertexId + 1;
-      global_graph.AddNode(sinkId, 0, 0);
+      global_graph.AddNode(sinkId, 0.1, 0.1);
       idset.insert(sinkId);
       for (auto& it : exitVertexSet){
 	global_graph.AddEdge(it, sinkId, 0);
@@ -585,7 +588,7 @@ namespace triplet{
 	  // Set the finished_tasks properly
 	  TaihuLight[devId]->IncreaseTasks(1);
 
-	  if(TaihuLight[devId]->GetAvaTime() <= global_timer){
+	  if(TaihuLight[devId]->GetAvaTime() <= global_timer && TaihuLight[devId]->IsBusy()){
 	    // Only set free the ones that are really free.
 	    TaihuLight[devId]->SetFree();
 	    deviceInUse --;
@@ -684,6 +687,10 @@ namespace triplet{
 	float transmission_time = CalcTransmissionTime(*nd, *dev);
 	float execution_time = CalcExecutionTime(*nd, *dev);
 
+	// TODO: change all the time from second to microsecond
+	// To avoid error, execution time should not be less than 1ms.
+	execution_time = std::max(execution_time, (float)0.01);
+
 	//Manage memory blocks data structures
 	int block_id = nd->GetId();
 	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), std::max(nd->GetDataDmd(), (float)0.0), nd->GetOutNum());
@@ -724,7 +731,7 @@ namespace triplet{
 	dev->IncreaseTransTime(transmission_time);
 	dev->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
-#if 0
+#if 1
 	std::cout<<"Execution queue: "<<std::endl;
 	for (auto& x: execution_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
@@ -1339,8 +1346,11 @@ namespace triplet{
   void MemoryBlock::DoAlloc(Cluster TaihuLight){
     assert(BlockId >= 0);
     assert(DeviceId >= 0);
-    assert(BlockSize > 0);
+    assert(BlockSize >= 0);
     assert(ReferNum >= 0); // The sink node has ReferNum=0
+
+    // At least 1KB for a block size, to avoid error.
+    BlockSize = std::max(BlockSize, 1);
 
 #ifdef DEBUG
     std::cout<<"**Memory block allocate**"<<std::endl;

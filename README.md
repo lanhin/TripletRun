@@ -41,6 +41,7 @@ make clean
 10. More DEBUG macros to control the verbose level.
 11. Specialization of tasks: not all the devices support every execution node.
 12. More details of the device: different calculation types and computation power.
+13. Change time counting from second to microsecond.
 
 ## Develope Notes
 - (2017-11-13) Now the simulator can really run and produce the processing time of the input graph. There're still many bugs to fix and many features to add.

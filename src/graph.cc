@@ -235,6 +235,7 @@ namespace triplet{
   */
   void Graph::AddNode(int id, float comDmd, float dataDmd){
     assert(id >= 0);
+    assert(comDmd > 0.0);
     graphmap::iterator it;
     it = graph_.find(id);
     assert(it == graph_.end()); //Error: the node has already created
