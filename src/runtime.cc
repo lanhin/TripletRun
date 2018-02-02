@@ -24,6 +24,12 @@ namespace triplet{
     deviceInUse = 0;
     OCT = NULL;
     max_devId = -1;
+    task_total = 0;
+    task_hit_counter = 0;
+    dev_hit_counter = 0;
+    dc_valid_counter = 0;
+    mean_computing_power = 0;
+    DCRatio = 0;
     //blockIdCounter = 0;
   }
 
@@ -84,7 +90,7 @@ namespace triplet{
       global_graph.AddNode(id1, comDmd1, dataDmd1);
       idset.insert(id1);
 
-#if 1
+#if 0
       std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<std::endl;
 #endif
     }
@@ -172,6 +178,7 @@ namespace triplet{
       TaihuLight[id1] = dev;
       deviceNum ++;
       max_devId = std::max(max_devId, id1);
+      mean_computing_power += (compute1 - mean_computing_power) / (deviceNum);
       computerset.insert(loc1);
     }
 
@@ -208,12 +215,14 @@ namespace triplet{
   /** Init the runtime data structures: pending_list and ready_queue
       and calculate the OCT, RankOCT of the graph.
   */
-  void Runtime::InitRuntime(SchedulePolicy sch){
+  void Runtime::InitRuntime(SchedulePolicy sch, float dc){
     log_start("Runtime initialization...");
 
-    std::cout<<"Scheduler: "<<sch<<std::endl;
+    std::cout<<" Scheduler: "<<sch<<std::endl;
+    std::cout<<" DC ratio: "<<dc<<std::endl;
     Scheduler = sch;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
+    DCRatio = dc;
 
     log_start("OCT calculation...");
     CalcOCT(); //OCT for PEFT
@@ -394,12 +403,14 @@ namespace triplet{
 
   /** Calculate the rank_oct used in PEFT based on OCT.
    */
+  // TODO: avoid overflow for big value
   void Runtime::CalcRankOCT(){
     for (int ndId : idset){
       Node* nd = global_graph.GetNode(ndId);
-      int rowOCT = 0;
+      float rowOCT = 0;
       for (int i = 0; i < this->deviceNum; i++) {
-	rowOCT += OCT[ndId][i];
+	//rowOCT += OCT[ndId][i];
+	rowOCT += (float(OCT[ndId][i]) - rowOCT) / (i+1);
       }
       nd->SetRankOCT( ((float)rowOCT)/this->deviceNum );
 
@@ -540,7 +551,9 @@ namespace triplet{
       Node * succNd = global_graph.GetNode(it);
       normdegree += 1 / (float)succNd->GetInNum();
     }
+#ifdef DEBUG
     std::cout<<"Norm degree of node "<<nd->GetId()<<": "<<normdegree<<std::endl;
+#endif
     return normdegree;
   }
 
@@ -636,6 +649,25 @@ namespace triplet{
  
 	//2.1 pick a task from ready_queue (default: choose the first one element)
 	int task_node_id = TaskPick();
+
+	/** Task counter: total tasks and tasks that DONF hits
+	 */
+	task_total++;
+	float maxOutDegree = -1;
+	std::vector<int>::iterator iter = ready_queue.begin();
+	for (; iter != ready_queue.end(); iter++){
+	  Node* nd = global_graph.GetNode(*iter);
+	  float degree = NDON(nd);
+	  if (maxOutDegree < degree){
+	    maxOutDegree = degree;
+	  }
+	}
+	Node* pickednd = global_graph.GetNode(task_node_id);
+	if(NDON(pickednd)+ZERO_POSITIVE > maxOutDegree){
+	  task_hit_counter++;
+	}
+
+
 	Node* nd = global_graph.GetNode(task_node_id);
 
 	//2.2 choose a free device to execute the task (default: choose the first free device)
@@ -649,6 +681,13 @@ namespace triplet{
 	}
 	// Entry task duplication policy doesn't need this.
 	Device* dev = DevicePick(task_node_id);
+
+	/** Test if DATACENTRIC could hit this pick.
+	 */
+	Device* test_dev = DevicePick(task_node_id, DATACENTRIC);
+	if(dev->GetId() == test_dev->GetId()){
+	  dev_hit_counter++;
+	}
 
 	/** If dev == NULL, re-insert the node into ready_queue,
 	    and then calculate nearest finish time.
@@ -731,7 +770,7 @@ namespace triplet{
 	dev->IncreaseTransTime(transmission_time);
 	dev->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
-#if 1
+#if 0
 	std::cout<<"Execution queue: "<<std::endl;
 	for (auto& x: execution_queue)
 	  std::cout << " [" << x.first << ':' << x.second << ']'<< std::endl;
@@ -824,7 +863,7 @@ namespace triplet{
       std::vector<int>::iterator maxIter; // Point to the task with max priority.
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
-	if(Scheduler == PEFT){
+	if(Scheduler == PEFT){ //PEFT
 	  if (maxPriority < nd->GetRankOCT()){
 	    maxPriority = nd->GetRankOCT();
 	    maxIter = iter;
@@ -848,6 +887,7 @@ namespace triplet{
     }
       break;
 
+    case DATACENTRIC:
     case DONF:{
       float maxOutDegree = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
@@ -868,12 +908,12 @@ namespace triplet{
     case MULTILEVEL:
       break;
 
-    case DATACENTRIC:
+      //case DATACENTRIC:
       /** If device in use is small, fetch a task from the ready queue tail.
 	  Else, fetch a task from the head.
 	  We need a flag var. For example, ...
        */
-      break;
+      //break;
     default:
       std::cout<<"Error: unrecognized scheduling policy "<<Scheduler<<std::endl;
       exit(1);
@@ -885,17 +925,25 @@ namespace triplet{
   /** Pick a free device according to the task requirements and
       scheduling policy.
    */
-  Device* Runtime::DevicePick(int ndId){
+  Device* Runtime::DevicePick(int ndId, SchedulePolicy sch){
+    SchedulePolicy InnerScheduler;
+
 #ifdef DEBUG
     std::cout<<"DevicePick: Scheduler "<<Scheduler<<", node "<<ndId<<std::endl;
 #endif
+
+    if (sch == UNKNOWN){
+      InnerScheduler = this->Scheduler;
+    }else{
+      InnerScheduler = sch;
+    }
 
     //int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
 
     Node * nd = global_graph.GetNode(ndId);
     Device * dev = NULL;
     float exeTime = -1.0;
-    switch(Scheduler){
+    switch(InnerScheduler){
     case UNKNOWN:
       break;
 
@@ -1019,10 +1067,75 @@ namespace triplet{
     case MULTILEVEL:
       break;
 
-    case DATACENTRIC:
+    case DATACENTRIC:{
       /** Pick the device according to the data location
 	  or the min data transformation time.
        */
+      float comtime, caltime, tmpweight, maxweight = 0;
+      int ndidx;
+      for (auto it : nd->input) {
+	if ((tmpweight = CommunicationDataSize(it, ndId)) > maxweight ){
+	  maxweight = tmpweight;
+	  ndidx = it;
+	}
+      }
+      comtime = maxweight / TaihuLightNetwork.GetMeanBW();
+      caltime = nd->GetCompDmd() / GetMeanCP();
+
+      if (comtime > (caltime * this->DCRatio)){// pick according to data location
+	// Increase the counter and get the device
+	dc_valid_counter++;
+	dev = TaihuLight[global_graph.GetNode(ndidx)->GetOccupied()];
+      }else{// pick according to EFT
+	float min_OEFT = -1;
+	for (auto& it: TaihuLight){
+	  if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
+	    // The free memory of the device is too little, skip
+	    continue;
+	  }
+
+	  float w = nd->GetCompDmd() / (it.second)->GetCompPower();
+
+	  // 2. Calculate EST by traversing all the pred(ndId)
+	  float EST = 0;
+	  float tmpEST;
+	  // TODO: The logic below can be replaced by CalcTransmissionTime()
+	  for (auto& pred : nd->input){
+	    Node* predNd = global_graph.GetNode(pred);
+	    if (predNd->GetOccupied() == it.first){
+	      /** Execute on the same device
+	      */
+	      /** Note: since the scheduled tasks are ready tasks,
+		  tmpEST = global_timer
+	      */
+	      tmpEST = std::max(predNd->GetAFT(), global_timer);
+	    }else{//on different device
+	      float ct;// Comunication time
+	      ct = TaihuLightNetwork.GetBw((it.second)->GetId(), predNd->GetOccupied()); //bandwith
+	      if (ct <= BW_ZERO){//get bandwith between nodes
+		ct = TaihuLightNetwork.GetBw((it.second)->GetLocation(), TaihuLight[predNd->GetOccupied()]->GetLocation(), true);
+	      }
+	      ct = CommunicationDataSize(pred, ndId) / ct;
+
+	      /** Note: since the scheduled tasks are ready tasks,
+		  tmpEST = global_timer + ct
+	      */
+	      tmpEST = std::max(predNd->GetAFT(), global_timer) + ct;
+	    }
+	    EST = std::max(tmpEST, EST);
+	  }
+
+	  // 3. Calculate EFT(nd, it) = EST + w
+	  // Two ways to calculate w for debugging
+	  EST = std::max( EST, (it.second)->GetAvaTime() );
+
+	  if ( (min_OEFT < 0) || (min_OEFT > EST + w) ){
+	    min_OEFT = EST + w;
+	    dev = it.second;
+	  }
+	}
+      }
+    }
       break;
 
     default:
@@ -1256,6 +1369,18 @@ namespace triplet{
     return dead_loop;
   }
 
+  /** Change the scheduling policy during running time.
+   */
+  void Runtime::SetScheduler(SchedulePolicy sch){
+    this->Scheduler = sch;
+  }
+
+  /** Get mean computation power.
+   */
+  float Runtime::GetMeanCP(){
+    return this->mean_computing_power;
+  }
+
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
@@ -1275,6 +1400,7 @@ namespace triplet{
 
       std::cout<<" Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<std::endl;
     }
+    std::cout<<"Total tasks:"<<this->task_total<<"\n\tDONF hit times:"<<this->task_hit_counter<<" propertion:"<<float(this->task_hit_counter)/this->task_total<<"\n\tDatacentric hit times:"<<this->dev_hit_counter<<" propertion:"<<float(this->dev_hit_counter)/this->task_total<<"\n\tDatacentric valid times:"<<this->dc_valid_counter<<" propertion:"<<float(this->dc_valid_counter)/this->task_total<<std::endl;
     std::cout<<"-----------------------------------"<<std::endl;
 
   }

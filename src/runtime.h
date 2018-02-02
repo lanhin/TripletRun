@@ -84,7 +84,7 @@ namespace triplet{
     /** Init the runtime data structures: pending_list and ready_queue
 	and calculate the OCT, RankOCT of the graph.
      */
-    void InitRuntime(SchedulePolicy sch = PEFT);
+    void InitRuntime(SchedulePolicy sch = PEFT, float dc = 1.0);
 
     /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
 	This function cannot be moved into class Graph
@@ -125,7 +125,7 @@ namespace triplet{
     /** Pick a free device according to the task requirements and
 	scheduling policy.
     */
-    Device* DevicePick(int ndId);
+    Device* DevicePick(int ndId, SchedulePolicy sch = UNKNOWN);
 
     /** Calculate the nearest time that a new decision can be made.
      */
@@ -154,6 +154,14 @@ namespace triplet{
 	If a dead loop is detected, report it and return true, otherwise return false.
      */
     bool DeadLoopDetect();
+
+    /** Change the scheduling policy during running time.
+     */
+    void SetScheduler(SchedulePolicy sch);
+
+    /** Get mean computation power.
+     */
+    float GetMeanCP();
 
     /** Output the simlulation report.
      */
@@ -193,8 +201,15 @@ namespace triplet{
     Cluster TaihuLight; // The cluster.
     Connections TaihuLightNetwork; // Network of the cluster.
     float global_timer; // For recording global time.
+    float mean_computing_power; // Mean computation power of all devices.
+    float DCRatio; // Data centric ratio, used in devicepick
     int RRCounter; // Counter for RR policy
     int max_devId; // Max device id in the cluster
+
+    int task_total; // Total tasks scheduled
+    int task_hit_counter; // DONF task pick hit counter
+    int dev_hit_counter; // DATACENTRIC device pick hit
+    int dc_valid_counter; // The times that DATACENTRIC really works
 
     float **OCT; // The Optimistic Cost Table used in PEFT
 

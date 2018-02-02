@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
   const char* clusterfile = "cluster.json";
 
   int c;
-  int digit_optind = 0;
+  float dcratio = 1.0;
 
   while (1) {
     int this_option_optind = optind ? optind : 1;
@@ -88,11 +88,12 @@ int main(int argc, char *argv[])
       {"help", 0, 0, 'h'},
       {"graph", 1, 0, 'g'},
       {"cluster", 1, 0, 'c'},
+      {"dcratio", 1, 0, 'd'},
       {"scheduler", 1, 0, 's'},
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "c:g:hs:",
+    c = getopt_long(argc, argv, "c:d:g:hs:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -102,6 +103,10 @@ int main(int argc, char *argv[])
       assert(optarg);
       clusterfile = optarg;
       std::cout<<"Set cluster file: "<<clusterfile<<std::endl;
+      break;
+    case 'd':
+      assert(optarg);
+      dcratio = atof(optarg);
       break;
     case 'g':
       assert(optarg);
@@ -152,12 +157,10 @@ int main(int argc, char *argv[])
     std::cout<<std::endl;
   }
 
-
-
   triplet::Runtime rt;
   rt.InitGraph(graphfile);
   rt.InitCluster(clusterfile);
-  rt.InitRuntime(scheduler);
+  rt.InitRuntime(scheduler, dcratio);
   rt.Execute();
   
   return 0;

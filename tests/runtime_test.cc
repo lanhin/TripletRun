@@ -55,4 +55,16 @@ TEST(RuntimeTest, BasicOperations){
 
   std::vector<int> rq = rt.GetReadyQueue();
   EXPECT_EQ(rq.size(), 0);
+
+  EXPECT_FLOAT_EQ(rt.GetMeanCP(), 15.666667);
+  rt.SetScheduler(triplet::DATACENTRIC);
+
+  EXPECT_EQ(rt.DevicePick(0)->GetId(), 0);
+
+  EXPECT_EQ(rt.DevicePick(2)->GetId(), 0);
+
+  gr.GetNode(0)->SetOccupied(3);
+  EXPECT_EQ(rt.DevicePick(2)->GetId(), 3);
+
+  EXPECT_EQ(rt.DevicePick(1)->GetId(), 0);
 }
