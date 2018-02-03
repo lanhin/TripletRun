@@ -140,6 +140,9 @@ int main(int argc, char *argv[])
       }else if(strcmp("HEFT", optarg) == 0 || strcmp("heft", optarg) == 0){
 	scheduler = triplet::HEFT;
 	std::cout<<"scheduler HEFT"<<std::endl;
+      }else if(strcmp("DC", optarg) == 0 || strcmp("dc", optarg) == 0){
+	scheduler = triplet::DATACENTRIC;
+	std::cout<<"scheduler DATACENTRIC"<<std::endl;
       }else{
 	std::cout<<"Error: cannot identify scheduler "<<optarg<<std::endl;
 	exit(1);
