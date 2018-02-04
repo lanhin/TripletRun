@@ -1441,6 +1441,12 @@ namespace triplet{
     return meanwaittime;
   }
 
+  /** Get max parallel value.
+   */
+  int Runtime::GetMaxParallel(){
+    return this->max_parallel;
+  }
+
 
   /** Output the simlulation report.
    */

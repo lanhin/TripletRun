@@ -85,4 +85,6 @@ TEST(RuntimeTest, MeanWaitTime){
   EXPECT_FLOAT_EQ(gr.GetNode(4)->GetWaitTime(), 0.3125);
   EXPECT_FLOAT_EQ(gr.GetNode(5)->GetWaitTime(), 0.625);
   EXPECT_FLOAT_EQ(gr.GetNode(8)->GetWaitTime(), 0.3125);
+
+  EXPECT_EQ(rt.GetMaxParallel(), 3);
 }

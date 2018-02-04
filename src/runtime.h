@@ -167,6 +167,10 @@ namespace triplet{
      */
     float GetMeanWaitTime();
 
+    /** Get max parallel value.
+     */
+    int GetMaxParallel();
+
     /** Output the simlulation report.
      */
     void SimulationReport();
