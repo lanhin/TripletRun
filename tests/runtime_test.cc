@@ -27,7 +27,7 @@ TEST(RuntimeTest, BasicOperations){
   triplet::Graph gr = rt.GetGraph();
   EXPECT_EQ(gr.Edges(), 9);
 
-  rt.InitRuntime();
+  rt.InitRuntime(triplet::HSIP);
 
   EXPECT_FLOAT_EQ(gr.GetNode(0)->GetRank_u_HSIP(), 32.1785113);
   EXPECT_FLOAT_EQ(gr.GetNode(1)->GetRank_u_HSIP(), 16.54997194);
@@ -67,4 +67,22 @@ TEST(RuntimeTest, BasicOperations){
   EXPECT_EQ(rt.DevicePick(2)->GetId(), 3);
 
   EXPECT_EQ(rt.DevicePick(1)->GetId(), 0);
+}
+
+
+TEST(RuntimeTest, MeanWaitTime){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test.json");
+  rt.InitCluster("cluster_test.json");
+  rt.InitRuntime(triplet::PEFT);
+  rt.Execute();
+
+  triplet::Graph gr = rt.GetGraph();
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetWaitTime(), 0);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetWaitTime(), 0);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetWaitTime(), 0.9375);
+  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetWaitTime(), 0.625);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetWaitTime(), 0.3125);
+  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetWaitTime(), 0.625);
+  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetWaitTime(), 0.3125);
 }

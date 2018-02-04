@@ -163,6 +163,10 @@ namespace triplet{
      */
     float GetMeanCP();
 
+    /** Calculate mean wait time of all tasks.
+     */
+    float GetMeanWaitTime();
+
     /** Output the simlulation report.
      */
     void SimulationReport();
@@ -205,11 +209,18 @@ namespace triplet{
     float DCRatio; // Data centric ratio, used in devicepick
     int RRCounter; // Counter for RR policy
     int max_devId; // Max device id in the cluster
+    int max_parallel; // Max parallelism
 
     int task_total; // Total tasks scheduled
     int task_hit_counter; // DONF task pick hit counter
     int dev_hit_counter; // DATACENTRIC device pick hit
     int dc_valid_counter; // The times that DATACENTRIC really works
+
+    double graph_init_time;
+    double cluster_init_time;
+    double oct_time;
+    double rankoct_time;
+    double rank_u_time;
 
     float **OCT; // The Optimistic Cost Table used in PEFT
 

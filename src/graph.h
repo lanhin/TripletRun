@@ -125,6 +125,14 @@ namespace triplet{
      */
     float GetMeanWeight();
 
+    /** Set waiting time of the node.
+     */
+    void SetWaitTime(float time);
+
+    /** Get waiting time of the node.
+     */
+    float GetWaitTime();
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -148,6 +156,7 @@ namespace triplet{
     float rank_u_HSIP; // Used in HSIP policy
     float rank_u_HEFT; // Used in HEFT policy
     float AFT; // The actual finish time of this node
+    float wait_time; // The waiting time of the node
   };
 
   class Graph{

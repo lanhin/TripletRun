@@ -12,7 +12,7 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0) {}
+    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0) {}
   Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
@@ -21,6 +21,7 @@ namespace triplet{
     rank_u_HSIP = -1;
     rank_u_HEFT = -1;
     mean_weight = -1.0;
+    wait_time = 0.0;
   }
 
   Node::~Node(){
@@ -192,6 +193,19 @@ namespace triplet{
   float Node::GetMeanWeight(){
     return this->mean_weight;
   }
+
+  /** Set waiting time of the node.
+   */
+  void Node::SetWaitTime(float time){
+    this->wait_time = time;
+  }
+
+  /** Get waiting time of the node.
+   */
+  float Node::GetWaitTime(){
+    return this->wait_time;
+  }
+
 
 
   // class graph

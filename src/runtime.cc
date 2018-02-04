@@ -30,6 +30,13 @@ namespace triplet{
     dc_valid_counter = 0;
     mean_computing_power = 0;
     DCRatio = 0;
+    max_parallel = 0;
+
+    graph_init_time = 0.0;
+    cluster_init_time = 0.0;
+    oct_time = 0.0;
+    rankoct_time = 0;
+    rank_u_time = 0;
     //blockIdCounter = 0;
   }
 
@@ -59,6 +66,8 @@ namespace triplet{
     Json::Value root;
 
     log_start("Graph initialization...");
+    DECLARE_TIMING(graph);
+    START_TIMING(graph);
 
     // check if the json file exists
     if (access(graphFile, F_OK) != 0){
@@ -129,6 +138,8 @@ namespace triplet{
     }
 #endif
 
+    STOP_TIMING(graph);
+    this->graph_init_time = GET_TIMING(graph);
     log_end("Graph initialization.");
   }
 
@@ -139,6 +150,8 @@ namespace triplet{
     std::string errs;
     Json::Value root;
 
+    DECLARE_TIMING(cluster);
+    START_TIMING(cluster);
     log_start("Cluster initialization...");
 
     // check if the json file exists
@@ -209,6 +222,8 @@ namespace triplet{
     std::cout<<" Links among devices: "<<this->TaihuLightNetwork.GetDevConNum()<<std::endl;
     std::cout<<"-------------------------------------"<<std::endl;
 
+    STOP_TIMING(cluster);
+    this->cluster_init_time = GET_TIMING(cluster);
     log_end("Cluster initialization.");
   }
 
@@ -224,21 +239,40 @@ namespace triplet{
     RRCounter = -1; // Always set it -1 at the beginning of execution?
     DCRatio = dc;
 
-    log_start("OCT calculation...");
-    CalcOCT(); //OCT for PEFT
-    log_end("OCT calculation.");
+    if (Scheduler == PEFT){
+      DECLARE_TIMING(oct);
+      log_start("OCT calculation...");
+      START_TIMING(oct);
+      CalcOCT(); //OCT for PEFT
+      STOP_TIMING(oct);
+      this->oct_time = GET_TIMING(oct);
+      std::cout<<" Execution time of CalcOCT():"<<GET_TIMING(oct)<<" s"<<std::endl;
+      log_end("OCT calculation.");
 
-    log_start("Rank OCT calculation...");
-    CalcRankOCT(); //RankOCT for PEFT
-    log_end("Rank OCT calculation.");
+      DECLARE_TIMING(rankoct);
+      log_start("Rank OCT calculation...");
+      START_TIMING(rankoct);
+      CalcRankOCT(); //RankOCT for PEFT
+      STOP_TIMING(rankoct);
+      this->rankoct_time = GET_TIMING(rankoct);
+      std::cout<<" Execution time of CalcRankOCT():"<<GET_TIMING(rankoct)<<" s"<<std::endl;
+      log_end("Rank OCT calculation.");
+    }
 
-    log_start("OCCW initialization...");
-    global_graph.InitAllOCCW(); //OCCW for HSIP
-    log_end("OCCW initialization.");
+    if (Scheduler == HSIP || Scheduler == HEFT){
+      log_start("OCCW initialization...");
+      global_graph.InitAllOCCW(); //OCCW for HSIP
+      log_end("OCCW initialization.");
 
-    log_start("Rank_u calculation...");
-    CalcRank_u(); // Rank_u for HSIP
-    log_end("Rank_u calculation.");
+      DECLARE_TIMING(ranku);
+      log_start("Rank_u calculation...");
+      START_TIMING(ranku);
+      CalcRank_u(); // Rank_u for HSIP and HEFT
+      STOP_TIMING(ranku);
+      this->rank_u_time = GET_TIMING(ranku);
+      std::cout<<" Execution time of CalcRank_u():"<<GET_TIMING(ranku)<<" s"<<std::endl;
+      log_end("Rank_u calculation.");
+    }
 
     // Init ready_queue
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
@@ -253,6 +287,9 @@ namespace triplet{
 
       if (pend == 0){ //add it into ready_queue
 	ready_queue.push_back(*iter);
+
+	//Record the current time
+	global_graph.GetNode(*iter)->SetWaitTime(this->global_timer);
       }
     }
 
@@ -624,6 +661,10 @@ namespace triplet{
 
 	    if (pendingNum == 0){
 	      ready_queue.push_back(*ndit);
+
+	      //Record the current time
+	      global_graph.GetNode(*ndit)->SetWaitTime(this->global_timer);
+
 	    }
 	  }
 
@@ -646,7 +687,10 @@ namespace triplet{
        */
       while ( (!ready_queue.empty()) ) {
 	// TODO: 1. consider schedule time here;
- 
+
+	// 2.0 Update max_parallel value
+	max_parallel = std::max(max_parallel, (int)(ready_queue.size() + execution_queue.size()));
+
 	//2.1 pick a task from ready_queue (default: choose the first one element)
 	int task_node_id = TaskPick();
 
@@ -751,6 +795,9 @@ namespace triplet{
 	  AST = std::max(dev->GetAvaTime(), global_timer + transmission_time);
 
 	  assert(AST >= ZERO_NEGATIVE);
+
+	  //Record the task waiting time
+	  nd->SetWaitTime(AST - nd->GetWaitTime());
 
 	  //Record the available time of the corresponding device
 	  dev->SetAvaTime(AST + execution_time);
@@ -1381,6 +1428,20 @@ namespace triplet{
     return this->mean_computing_power;
   }
 
+  /** Calculate mean wait time of all tasks.
+   */
+  float Runtime::GetMeanWaitTime(){
+    float meanwaittime = 0;
+    int numtasks = 0;
+    for (auto it : idset) {
+      numtasks++;
+      meanwaittime += (global_graph.GetNode(it)->GetWaitTime() - meanwaittime) / numtasks;
+    }
+
+    return meanwaittime;
+  }
+
+
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
@@ -1401,6 +1462,14 @@ namespace triplet{
       std::cout<<" Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<std::endl;
     }
     std::cout<<"Total tasks:"<<this->task_total<<"\n\tDONF hit times:"<<this->task_hit_counter<<" propertion:"<<float(this->task_hit_counter)/this->task_total<<"\n\tDatacentric hit times:"<<this->dev_hit_counter<<" propertion:"<<float(this->dev_hit_counter)/this->task_total<<"\n\tDatacentric valid times:"<<this->dc_valid_counter<<" propertion:"<<float(this->dc_valid_counter)/this->task_total<<std::endl;
+    std::cout<<"\nMax parallelism: "<<this->max_parallel<<". Mean wait time: "<<GetMeanWaitTime()<<" s"<<std::endl;
+
+    std::cout<<"\nTiming info:"<<std::endl;
+    std::cout<<"\tGraph init time: "<<this->graph_init_time<<" s"<<std::endl;
+    std::cout<<"\tCluster init time: "<<this->cluster_init_time<<" s"<<std::endl;
+    std::cout<<"\tCalcOCT time: "<<this->oct_time<<" s"<<std::endl;
+    std::cout<<"\tRank OCT time: "<<this->rankoct_time<<" s"<<std::endl;
+    std::cout<<"\tRank u time: "<<this->rank_u_time<<" s"<<std::endl;
     std::cout<<"-----------------------------------"<<std::endl;
 
   }

@@ -7,6 +7,7 @@
 #include "device.h"
 #include "graph.h"
 #include "runtime.h"
+#include "utils.h"
 #include <iostream>
 #include <ctime>
 #include <cassert>
@@ -66,6 +67,8 @@ void Usage(){
 
 int main(int argc, char *argv[])
 {
+  DECLARE_TIMING(triplet);
+  START_TIMING(triplet);
   // Start information
   std::cout<<"TripletRun 0.0.1 alpha"<<std::endl;
   time_t now = time(0);
@@ -161,10 +164,24 @@ int main(int argc, char *argv[])
   }
 
   triplet::Runtime rt;
+
+  DECLARE_TIMING(graph);
+  DECLARE_TIMING(cluster);
+
+  START_TIMING(graph);
   rt.InitGraph(graphfile);
+  STOP_TIMING(graph);
+  std::cout<<" Graph init time: "<<GET_TIMING(graph)<<" s"<<std::endl;
+
+  START_TIMING(cluster);
   rt.InitCluster(clusterfile);
+  STOP_TIMING(cluster);
+  std::cout<<" Cluster init time: "<<GET_TIMING(cluster)<<" s"<<std::endl;
+
   rt.InitRuntime(scheduler, dcratio);
   rt.Execute();
-  
+
+  STOP_TIMING(triplet);
+  std::cout<<"Total execution time: "<<GET_TIMING(triplet)<<" s"<<std::endl;
   return 0;
 }

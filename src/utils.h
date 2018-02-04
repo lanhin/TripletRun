@@ -10,6 +10,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <ctime>
+
 #define RESET       "\033[0m"
 #define BLACK       "\033[30m"
 #define RED         "\033[31m"
@@ -46,5 +48,13 @@
 #define log_info(x)
 #define log_ok(x)
 #endif // DEV_MODE
+
+// Record the execution time of some code, in milliseconds.
+#define DECLARE_TIMING(s)  std::clock_t timeStart_##s; double timeDiff_##s; double timeTally_##s = 0; int countTally_##s = 0
+#define START_TIMING(s)    timeStart_##s = std::clock()
+#define STOP_TIMING(s)     timeDiff_##s = (double)(std::clock() - timeStart_##s); timeTally_##s += timeDiff_##s; countTally_##s++
+#define GET_TIMING(s)      (double)(timeDiff_##s / ((double)CLOCKS_PER_SEC))
+#define GET_AVERAGE_TIMING(s)   (double)(countTally_##s ? timeTally_##s/ ((double)countTally_##s * cvGetTickFrequency()*1000.0) : 0)
+#define CLEAR_AVERAGE_TIMING(s) timeTally_##s = 0; countTally_##s = 0
 
 #endif //UTILS_H
