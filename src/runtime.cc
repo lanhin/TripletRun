@@ -509,7 +509,7 @@ namespace triplet{
     if(exitVertexSet.size() > 1){ // Multiple exit vertices
       // create a new "sink" vertex
       sinkId = maxVertexId + 1;
-      global_graph.AddNode(sinkId, 0, 0);
+      global_graph.AddNode(sinkId, 0.1, 0.1);
       idset.insert(sinkId);
       for (auto& it : exitVertexSet){
 	global_graph.AddEdge(it, sinkId, 0);
