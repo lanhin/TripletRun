@@ -703,6 +703,21 @@ namespace triplet{
 	/** Task counter: total tasks and tasks that DONF hits
 	 */
 	task_total++;
+	int NODF_task_id = TaskPick(DONF);
+	if(task_node_id == NODF_task_id){
+	  task_hit_counter++;
+	}
+
+	// Erase the task id from the ready_queue
+	std::vector<int>::iterator iter = ready_queue.begin();
+	for (; iter != ready_queue.end(); iter++){
+	  if (*iter == task_node_id){
+	    ready_queue.erase(iter);
+	    break;
+	  }
+	}
+
+	/*
 	float maxOutDegree = -1;
 	std::vector<int>::iterator iter = ready_queue.begin();
 	for (; iter != ready_queue.end(); iter++){
@@ -715,7 +730,7 @@ namespace triplet{
 	Node* pickednd = global_graph.GetNode(task_node_id);
 	if(NDON(pickednd)+ZERO_POSITIVE > maxOutDegree){
 	  task_hit_counter++;
-	}
+	  }*/
 
 
 	Node* nd = global_graph.GetNode(task_node_id);
@@ -862,43 +877,45 @@ namespace triplet{
       scheduling policy.
       Erase the correspinding task index from ready_queue.
    */
-  int Runtime::TaskPick(){
+  int Runtime::TaskPick(SchedulePolicy sch){
 #ifdef DEBUG
     std::cout<<"TaskPick: Scheduler "<<Scheduler<<std::endl;
 #endif
 
+    SchedulePolicy InnerScheduler;
+    if (sch == UNKNOWN){
+      InnerScheduler = this->Scheduler;
+    }else{
+      InnerScheduler = sch;
+    }
+
     int taskIdx = -1;
-    switch(Scheduler){
+    switch(InnerScheduler){
     case UNKNOWN:
       break;
 
     case FCFS:
     case RR:
       taskIdx = ready_queue.front();
-      ready_queue.erase(ready_queue.begin());
       break;
 
     case SJF:{ // Pick the shortest job
       int tmpComDmd, leastComDmd = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
-      std::vector<int>::iterator leastIter;
       for (; iter != ready_queue.end(); iter++){
 	if (leastComDmd < 0){ // the first node in ready_queue
 	  Node * nd = global_graph.GetNode(*iter);
 	  leastComDmd = nd->GetCompDmd();
-	  leastIter = iter;
 	  taskIdx = *iter;
 	}else{
 	  Node * nd = global_graph.GetNode(*iter);
 	  tmpComDmd = nd->GetCompDmd();
 	  if (leastComDmd > tmpComDmd){
 	    leastComDmd = tmpComDmd;
-	    leastIter = iter;
 	    taskIdx = *iter;
 	  }
 	}
       }
-      ready_queue.erase(leastIter);
     }
       break;
 
@@ -913,30 +930,25 @@ namespace triplet{
        */
       float maxPriority = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
-      std::vector<int>::iterator maxIter; // Point to the task with max priority.
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
 	if(Scheduler == PEFT){ //PEFT
 	  if (maxPriority < nd->GetRankOCT()){
 	    maxPriority = nd->GetRankOCT();
-	    maxIter = iter;
 	    taskIdx = *iter;
 	  }
 	}else if(Scheduler == HSIP){ //HSIP
 	  if (maxPriority < nd->GetRank_u_HSIP()){
 	    maxPriority = nd->GetRank_u_HSIP();
-	    maxIter = iter;
 	    taskIdx = *iter;
 	  }
 	}else{ //HEFT
 	  if (maxPriority < nd->GetRank_u_HEFT()){
 	    maxPriority = nd->GetRank_u_HEFT();
-	    maxIter = iter;
 	    taskIdx = *iter;
 	  }
 	}
       }
-      ready_queue.erase(maxIter);
     }
       break;
 
@@ -944,17 +956,14 @@ namespace triplet{
     case DONF:{
       float maxOutDegree = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
-      std::vector<int>::iterator maxIter; // Point to the task with max out degree.
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
 	float degree = NDON(nd);
 	if (maxOutDegree < degree){
 	  maxOutDegree = degree;
-	  maxIter = iter;
 	  taskIdx = *iter;
 	}
       }
-      ready_queue.erase(maxIter);
     }
       break;
 

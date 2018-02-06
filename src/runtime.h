@@ -120,7 +120,7 @@ namespace triplet{
 	scheduling policy.
 	Erase the correspinding task index from ready_queue.
     */
-    int TaskPick();
+    int TaskPick(SchedulePolicy sch = UNKNOWN);
 
     /** Pick a free device according to the task requirements and
 	scheduling policy.
