@@ -1000,13 +1000,12 @@ namespace triplet{
     case UNKNOWN:
       break;
 
-    case FCFS:
-    case SJF:
+    /** Actually this is a very basic logic, try to use the EFT way.
+     */
     case PRIORITY:
       for (auto& it: TaihuLight){
-	if((it.second)->IsFree() && ((nd->GetDataDmd())<=(it.second)->GetFreeRAM())){
+	if((nd->GetDataDmd()) <= (it.second)->GetFreeRAM() + ZERO_POSITIVE){
 	  float tmpExeTime = CalcExecutionTime(*nd, *(it.second));
-	  //std::cout<<"node "<<nd->GetId()<<" on dev "<<(it.second)->GetId()<<" Exe time:"<<tmpExeTime<<std::endl;
 	  if (exeTime < 0.0){
 	    exeTime = tmpExeTime;
 	    dev = it.second;
@@ -1023,7 +1022,7 @@ namespace triplet{
     case RR:
       for (int i = RRCounter+1; i<TaihuLight.size(); i++){
 	Device * tmpDev = TaihuLight[i];
-	if ( tmpDev->IsFree()  &&  ((nd->GetDataDmd())<=tmpDev->GetFreeRAM()) ){
+	if ( (nd->GetDataDmd()) <= tmpDev->GetFreeRAM() ){
 	  dev = tmpDev;
 	  RRCounter = i;
 	  break;
@@ -1032,7 +1031,7 @@ namespace triplet{
       if (dev == NULL){// Haven't found a good device
 	for (int i = 0; i<=RRCounter; i++){
 	  Device * tmpDev = TaihuLight[i];
-	  if ( tmpDev->IsFree()  &&  ((nd->GetDataDmd())<=tmpDev->GetFreeRAM()) ){
+	  if ( (nd->GetDataDmd())<=tmpDev->GetFreeRAM() ){
 	    dev = tmpDev;
 	    RRCounter = i;
 	    break;
@@ -1041,6 +1040,8 @@ namespace triplet{
       }
       break;
 
+    case FCFS:
+    case SJF:
     case DONF:
     case HEFT:
     case HSIP:
