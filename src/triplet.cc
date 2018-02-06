@@ -182,6 +182,6 @@ int main(int argc, char *argv[])
   rt.Execute();
 
   STOP_TIMING(triplet);
-  std::cout<<"Total execution time: "<<GET_TIMING(triplet)<<" s"<<std::endl;
+  std::cout<<"Total execution time: "<<GET_TIMING(triplet)<<std::endl;
   return 0;
 }

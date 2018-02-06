@@ -37,6 +37,9 @@ namespace triplet{
     oct_time = 0.0;
     rankoct_time = 0;
     rank_u_time = 0;
+
+    graph_file_name = "";
+    cluster_file_name = "";
     //blockIdCounter = 0;
   }
 
@@ -66,6 +69,7 @@ namespace triplet{
     Json::Value root;
 
     log_start("Graph initialization...");
+    graph_file_name = graphFile;
     DECLARE_TIMING(graph);
     START_TIMING(graph);
 
@@ -149,6 +153,8 @@ namespace triplet{
     Json::CharReaderBuilder reader;
     std::string errs;
     Json::Value root;
+
+    cluster_file_name = clusterFile;
 
     DECLARE_TIMING(cluster);
     START_TIMING(cluster);
@@ -1447,12 +1453,41 @@ namespace triplet{
     return this->max_parallel;
   }
 
+  /** Output SchedulePolicy as enum items.
+   */
+  std::ostream& operator<<(std::ostream& out, const SchedulePolicy value){
+    static std::map<SchedulePolicy, std::string> strings;
+    if (strings.size() == 0){
+#define INSERT_ELEMENT(p) strings[p] = #p
+      INSERT_ELEMENT(UNKNOWN);
+      INSERT_ELEMENT(FCFS);
+      INSERT_ELEMENT(SJF);
+      INSERT_ELEMENT(RR);
+      INSERT_ELEMENT(PRIORITY);
+      INSERT_ELEMENT(HEFT);
+      INSERT_ELEMENT(PEFT);
+      INSERT_ELEMENT(HSIP);
+      INSERT_ELEMENT(DONF);
+      INSERT_ELEMENT(MULTILEVEL);
+      INSERT_ELEMENT(DATACENTRIC);
+#undef INSERT_ELEMENT
+    }
+
+    return out << strings[value];
+  }
 
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
     std::cout<<"-------- Simulation Report --------"<<std::endl;
-    std::cout<<" Global timer:"<<global_timer<<std::endl;
+    std::cout<<" Graph file: "<<graph_file_name<<std::endl;
+    std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
+    std::cout<<" Scheduling Policy: "<<Scheduler<<std::endl;
+    std::cout<<" DC Ratio: "<<DCRatio<<std::endl;
+    std::cout<<" Total nodes: "<<task_total<<std::endl;
+    std::cout<<" Global timer: "<<global_timer<<std::endl;
+    std::cout<<" Max parallelism: "<<this->max_parallel<<std::endl;
+    std::cout<<" Mean wait time: "<<GetMeanWaitTime()<<std::endl;
 
     int devId, tasks;
     float occupyTime, dataTransTime;
@@ -1468,7 +1503,6 @@ namespace triplet{
       std::cout<<" Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<std::endl;
     }
     std::cout<<"Total tasks:"<<this->task_total<<"\n\tDONF hit times:"<<this->task_hit_counter<<" propertion:"<<float(this->task_hit_counter)/this->task_total<<"\n\tDatacentric hit times:"<<this->dev_hit_counter<<" propertion:"<<float(this->dev_hit_counter)/this->task_total<<"\n\tDatacentric valid times:"<<this->dc_valid_counter<<" propertion:"<<float(this->dc_valid_counter)/this->task_total<<std::endl;
-    std::cout<<"\nMax parallelism: "<<this->max_parallel<<". Mean wait time: "<<GetMeanWaitTime()<<" s"<<std::endl;
 
     std::cout<<"\nTiming info:"<<std::endl;
     std::cout<<"\tGraph init time: "<<this->graph_init_time<<" s"<<std::endl;

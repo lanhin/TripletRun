@@ -226,6 +226,9 @@ namespace triplet{
     double rankoct_time;
     double rank_u_time;
 
+    std::string graph_file_name;
+    std::string cluster_file_name;
+
     float **OCT; // The Optimistic Cost Table used in PEFT
 
     /* TODO: move this idset into class graph? */
