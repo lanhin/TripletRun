@@ -20,6 +20,8 @@ namespace triplet{
   Runtime::Runtime(){
     ETD = false;
     global_timer = 0.0;
+    scheduler_ava_time = 0.0;
+    scheduler_mean_cost = 0.0;
     deviceNum = 0;
     deviceInUse = 0;
     OCT = NULL;
@@ -611,7 +613,7 @@ namespace triplet{
       /** 0. if a memory block's refer number can be decreased
           decrease it and check if we need to free the block.
       */
-      for (int i=0; i<block_free_queue.size(); i++){
+      for (int i=block_free_queue.size()-1; i>=0; i--){
 	auto& it = block_free_queue[i];
 	if (it.second <= (global_timer + ZERO_POSITIVE)){
 	  MemoryBlock * blk_pointer = BlocksMap[it.first];
@@ -688,10 +690,11 @@ namespace triplet{
 	  it++;
 	}
       }
-      /** 2. If the ready queue is not empty, process a new task from it
-	  and update global_timer, deviceInUse
+
+      /** 2. If the ready queue is not empty and the scheduler is available,
+	  process a new task from it and update global_timer, deviceInUse
        */
-      while ( (!ready_queue.empty()) ) {
+      while ( (!ready_queue.empty()) && global_timer >= (scheduler_ava_time + ZERO_NEGATIVE) ) {
 	// TODO: 1. consider schedule time here;
 
 	// 2.0 Update max_parallel value
@@ -832,6 +835,9 @@ namespace triplet{
 	// Fill the execution_queue
 	execution_queue.emplace(task_node_id, (AST + execution_time));
 
+	// Set schduler_ava_time
+	scheduler_ava_time = global_timer + scheduler_mean_cost;
+
 	//Record the AFT of the node/vertex
 	nd->SetAFT(AST + execution_time);
 
@@ -857,13 +863,9 @@ namespace triplet{
 #endif
       }
 
-      /** 3. If ready queue is empty,
-	  update global_timer to the nearest finish time
+      /** 3. Update global_timer to the nearest finish time
        */
-      if ( ready_queue.empty() ){
-	global_timer = CalcNearestFinishTime();
-      }
-
+      global_timer = CalcNearestFinishTime();
     }
 
     // Finish running
@@ -1229,6 +1231,13 @@ namespace triplet{
       }
     }
 
+    // 3. If scheduler_ava_time is larger than global_timer, consider it as well
+    if (this->scheduler_ava_time >= global_timer + ZERO_POSITIVE){
+      if (NearestTime > this->scheduler_ava_time  ||  NearestTime < ZERO_NEGATIVE){
+	NearestTime = this->scheduler_ava_time;
+      }
+    }
+
     if (NearestTime > ZERO_POSITIVE){
       return NearestTime;
     }
@@ -1463,6 +1472,14 @@ namespace triplet{
     return this->max_parallel;
   }
 
+  /** Set scheduling mean cost.
+   */
+  void Runtime::SetSchedulerCost(float sc){
+    assert(sc >= 0.0);
+    scheduler_mean_cost = sc;
+  }
+
+
   /** Output SchedulePolicy as enum items.
    */
   std::ostream& operator<<(std::ostream& out, const SchedulePolicy value){
@@ -1498,6 +1515,7 @@ namespace triplet{
     std::cout<<" Global timer: "<<global_timer<<std::endl;
     std::cout<<" Max parallelism: "<<this->max_parallel<<std::endl;
     std::cout<<" Mean wait time: "<<GetMeanWaitTime()<<std::endl;
+    std::cout<<" Scheduler cost: "<<this->scheduler_mean_cost<<std::endl;
 
     int devId, tasks;
     float occupyTime, dataTransTime;

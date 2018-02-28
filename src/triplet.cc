@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 
   int c;
   float dcratio = 1.0;
+  float scheduler_cost = 0.0;
 
   while (1) {
     int this_option_optind = optind ? optind : 1;
@@ -93,10 +94,11 @@ int main(int argc, char *argv[])
       {"cluster", 1, 0, 'c'},
       {"dcratio", 1, 0, 'd'},
       {"scheduler", 1, 0, 's'},
+      {"scost", 1, 0, 't'},
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "c:d:g:hs:",
+    c = getopt_long(argc, argv, "c:d:g:hs:t:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -151,6 +153,10 @@ int main(int argc, char *argv[])
 	exit(1);
       }
       break;
+    case 't':
+      assert(optarg);
+      scheduler_cost = atof(optarg);
+      break;
     default:
       std::cout<<"Option processing error!"<<std::endl;
     }
@@ -179,6 +185,7 @@ int main(int argc, char *argv[])
   std::cout<<" Cluster init time: "<<GET_TIMING(cluster)<<" s"<<std::endl;
 
   rt.InitRuntime(scheduler, dcratio);
+  rt.SetSchedulerCost(scheduler_cost);
   rt.Execute();
 
   STOP_TIMING(triplet);

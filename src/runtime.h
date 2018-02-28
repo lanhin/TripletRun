@@ -171,6 +171,10 @@ namespace triplet{
      */
     int GetMaxParallel();
 
+    /** Set scheduling mean cost.
+     */
+    void SetSchedulerCost(float sc);
+
     /** Output the simlulation report.
      */
     void SimulationReport();
@@ -208,7 +212,9 @@ namespace triplet{
     Graph global_graph; // The computing graph.
     Cluster TaihuLight; // The cluster.
     Connections TaihuLightNetwork; // Network of the cluster.
+    float scheduler_ava_time; // When the next scheduling could occur.
     float global_timer; // For recording global time.
+    float scheduler_mean_cost; // Mean cost of scheduling.
     float mean_computing_power; // Mean computation power of all devices.
     float DCRatio; // Data centric ratio, used in devicepick
     int RRCounter; // Counter for RR policy

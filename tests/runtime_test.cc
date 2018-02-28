@@ -88,3 +88,19 @@ TEST(RuntimeTest, MeanWaitTime){
 
   EXPECT_EQ(rt.GetMaxParallel(), 3);
 }
+
+TEST(RuntimeTest, SchedulerCost){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test.json");
+  rt.InitCluster("cluster_test.json");
+  rt.InitRuntime(triplet::HSIP);
+  rt.SetSchedulerCost(1.0);
+  rt.Execute();
+  
+  triplet::Cluster sugon = rt.GetCluster();
+  EXPECT_FLOAT_EQ(sugon[0]->GetAvaTime(), 6.875);
+  EXPECT_FLOAT_EQ(sugon[1]->GetAvaTime(), 0);
+  EXPECT_FLOAT_EQ(sugon[3]->GetAvaTime(), 0);
+  
+
+}
