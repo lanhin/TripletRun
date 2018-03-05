@@ -67,7 +67,7 @@ edges = list()
 nodelinks = list()
 
 if (len(sys.argv)) != 2:
-    print "Usage: python2 dot2json.py <dotfile>"
+    print "Usage: python clustergen.py <cluster input file>"
     exit(1)
 
 filein = sys.argv[1]
@@ -94,6 +94,6 @@ with open(filein, "rb") as source:
 
 #print devices
 #print edges
-print nodelinks
+#print nodelinks
 
 jsonout(fileout, devices, edges, nodelinks)
