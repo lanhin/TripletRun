@@ -221,6 +221,7 @@ namespace triplet{
     int RRCounter; // Counter for RR policy
     int max_devId; // Max device id in the cluster
     int max_parallel; // Max parallelism
+    float max_devCompute; // Max device compute power
 
     int task_total; // Total tasks scheduled
     int task_hit_counter; // DONF task pick hit counter

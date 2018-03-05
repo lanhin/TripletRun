@@ -33,6 +33,7 @@ namespace triplet{
     mean_computing_power = 0;
     DCRatio = 0;
     max_parallel = 0;
+    max_devCompute = 0.0;
 
     graph_init_time = 0.0;
     cluster_init_time = 0.0;
@@ -201,6 +202,9 @@ namespace triplet{
       max_devId = std::max(max_devId, id1);
       mean_computing_power += (compute1 - mean_computing_power) / (deviceNum);
       computerset.insert(loc1);
+
+      //Record the max compute power
+      this->max_devCompute = std::max(this->max_devCompute, compute1);
     }
 
     for (int index = 0; index < root["links"].size(); index++){
@@ -225,6 +229,7 @@ namespace triplet{
     std::cout<<"-------- Cluster information --------"<<std::endl;
     std::cout<<" Total devices: "<<this->deviceNum<<std::endl;
     std::cout<<" Max device id: "<<this->max_devId<<std::endl;
+    std::cout<<" Max device compute power: "<<this->max_devCompute<<std::endl;
     std::cout<<" Total computer nodes: "<<this->computerset.size()<<std::endl;
     std::cout<<" Links among computer nodes: "<<this->TaihuLightNetwork.GetNodeConNum()<<std::endl;
     std::cout<<" Links among devices: "<<this->TaihuLightNetwork.GetDevConNum()<<std::endl;
