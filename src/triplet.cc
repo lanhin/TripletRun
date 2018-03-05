@@ -142,6 +142,9 @@ int main(int argc, char *argv[])
       }else if(strcmp("DONF", optarg) == 0 || strcmp("donf", optarg) == 0){
 	scheduler = triplet::DONF;
 	std::cout<<"scheduler DONF"<<std::endl;
+      }else if(strcmp("DONF2", optarg) == 0 || strcmp("donf2", optarg) == 0){
+	scheduler = triplet::DONF2;
+	std::cout<<"scheduler DONF2"<<std::endl;
       }else if(strcmp("HEFT", optarg) == 0 || strcmp("heft", optarg) == 0){
 	scheduler = triplet::HEFT;
 	std::cout<<"scheduler HEFT"<<std::endl;

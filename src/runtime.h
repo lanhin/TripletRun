@@ -25,6 +25,7 @@ namespace triplet{
     PEFT,
     HSIP,
     DONF, // Degree of node first
+    DONF2, // 2-degree degree of node first
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
@@ -109,7 +110,7 @@ namespace triplet{
 
     /** Calculate normalized degree of node.
      */
-    float NDON(Node * nd);
+    float NDON(Node * nd, int degree = 1);
 
     /** The whole execution logic.
      */

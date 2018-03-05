@@ -590,11 +590,18 @@ namespace triplet{
 
   /** Calculate normalized degree of node.
    */
-  float Runtime::NDON(Node * nd){
+  float Runtime::NDON(Node * nd, int degree){
+    // Only support degree = 1 or 2 at present.
+    assert(degree >= 1 && degree <= 2);
     float normdegree = 0;
     for (auto it : nd->output) {
       Node * succNd = global_graph.GetNode(it);
       normdegree += 1 / (float)succNd->GetInNum();
+      if(degree == 2){
+	for (auto it2 : succNd->output) {
+	  normdegree += 0.5 * 1 / (float)global_graph.GetNode(it2)->GetInNum();
+	}
+      }
     }
 #ifdef DEBUG
     std::cout<<"Norm degree of node "<<nd->GetId()<<": "<<normdegree<<std::endl;
@@ -955,12 +962,17 @@ namespace triplet{
       break;
 
     case DATACENTRIC:
-    case DONF:{
-      float maxOutDegree = -1;
+    case DONF:
+    case DONF2:{
+      float degree, maxOutDegree = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
-	float degree = NDON(nd);
+	if( Scheduler == DONF2){
+	  degree = NDON(nd, 2);
+	}else{ // DC, DONF
+	  degree = NDON(nd);
+	}
 	if (maxOutDegree < degree){
 	  maxOutDegree = degree;
 	  taskIdx = *iter;
@@ -1054,6 +1066,7 @@ namespace triplet{
     case FCFS:
     case SJF:
     case DONF:
+    case DONF2:
     case HEFT:
     case HSIP:
     case PEFT:{
@@ -1495,6 +1508,7 @@ namespace triplet{
       INSERT_ELEMENT(PEFT);
       INSERT_ELEMENT(HSIP);
       INSERT_ELEMENT(DONF);
+      INSERT_ELEMENT(DONF2);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT
