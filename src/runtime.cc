@@ -34,6 +34,8 @@ namespace triplet{
     DCRatio = 0;
     max_parallel = 0;
     max_devCompute = 0.0;
+    max_cpath_cc = 0.0;
+    min_execution_time = 0.0;
 
     graph_init_time = 0.0;
     cluster_init_time = 0.0;
@@ -246,6 +248,9 @@ namespace triplet{
   void Runtime::InitRuntime(SchedulePolicy sch, float dc){
     log_start("Runtime initialization...");
 
+    // Init min_execution_time
+    this->min_execution_time = 0.01;
+
     std::cout<<" Scheduler: "<<sch<<std::endl;
     std::cout<<" DC ratio: "<<dc<<std::endl;
     Scheduler = sch;
@@ -300,6 +305,9 @@ namespace triplet{
 
       if (pend == 0){ //add it into ready_queue
 	ready_queue.push_back(*iter);
+
+	// Calculate Cpath computatin cost
+	global_graph.CalcCpathCC(*iter, this->max_devCompute, this->min_execution_time);
 
 	//Record the current time
 	global_graph.GetNode(*iter)->SetWaitTime(this->global_timer);
@@ -651,6 +659,10 @@ namespace triplet{
 	  
 	  // Set free the corresponding device
 	  Node* nd = global_graph.GetNode(it->first);
+
+	  // Record cpath computation cost summary
+	  this->max_cpath_cc = std::max(this->max_cpath_cc, nd->GetCpathCC());
+
 	  int devId = nd->GetOccupied();
 #if 1
 	  std::cout<<"Node "<<it->first<<" finished execution at "<<global_timer<< ". It used device "<<devId<<std::endl;
@@ -681,6 +693,9 @@ namespace triplet{
 
 	    if (pendingNum == 0){
 	      ready_queue.push_back(*ndit);
+
+	      // Calculate Cpath computatin cost
+	      global_graph.CalcCpathCC(*ndit, this->max_devCompute, this->min_execution_time);
 
 	      //Record the current time
 	      global_graph.GetNode(*ndit)->SetWaitTime(this->global_timer);
@@ -808,7 +823,7 @@ namespace triplet{
 
 	// TODO: change all the time from second to microsecond
 	// To avoid error, execution time should not be less than 1ms.
-	execution_time = std::max(execution_time, (float)0.01);
+	execution_time = std::max(execution_time, this->min_execution_time);
 
 	//Manage memory blocks data structures
 	int block_id = nd->GetId();
@@ -1525,6 +1540,7 @@ namespace triplet{
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
+    float speedup = std::max(this->max_cpath_cc, (global_graph.GetTotalCost()/this->max_devCompute))/this->global_timer;
     std::cout<<"-------- Simulation Report --------"<<std::endl;
     std::cout<<" Graph file: "<<graph_file_name<<std::endl;
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
@@ -1534,7 +1550,12 @@ namespace triplet{
     std::cout<<" Global timer: "<<global_timer<<std::endl;
     std::cout<<" Max parallelism: "<<this->max_parallel<<std::endl;
     std::cout<<" Mean wait time: "<<GetMeanWaitTime()<<std::endl;
+    std::cout<<" Cpath cost summary: "<<this->max_cpath_cc<<std::endl;
     std::cout<<" Scheduler cost: "<<this->scheduler_mean_cost<<std::endl;
+    // Note: This speedup value maybe not so accurate!
+    std::cout<<" Speedup: "<<speedup<<std::endl;
+    std::cout<<" Efficiency: "<<speedup / this->deviceNum<<std::endl;
+    std::cout<<" SLR: "<<(this->global_timer/this->max_cpath_cc)<<std::endl;
 
     int devId, tasks;
     float occupyTime, dataTransTime;

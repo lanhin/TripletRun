@@ -12,7 +12,7 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0) {}
+    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0) {}
   Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
@@ -22,6 +22,7 @@ namespace triplet{
     rank_u_HEFT = -1;
     mean_weight = -1.0;
     wait_time = 0.0;
+    cpath_cc = 0.0;
   }
 
   Node::~Node(){
@@ -206,6 +207,18 @@ namespace triplet{
     return this->wait_time;
   }
 
+  /** Get the critical path computation cost value of this node.
+   */
+  float Node::GetCpathCC(){
+    return this->cpath_cc;
+  }
+
+  /** Set the critical path computation cost value of this node.
+   */
+  void Node::SetCpathCC(float cc){
+    assert(cc >= ZERO_NEGATIVE);
+    this->cpath_cc = cc;
+  }
 
 
   // class graph
@@ -367,6 +380,28 @@ namespace triplet{
   int Graph::MaxNodeId(){
     return maxNode;
   }
+
+  /** Calculate the max device compute power of node ndId.
+   */
+  void Graph::CalcCpathCC(int ndId, float max_devCompute, float min_execution_time){
+    assert(max_devCompute > 0.0);
+    Node* nd = GetNode(ndId);
+
+    float max_cc = 0.0;
+    for (auto& it : nd->input) {
+      max_cc = std::max(max_cc, GetNode(it)->GetCpathCC());
+    }
+    max_cc += std::max(nd->GetCompDmd() / max_devCompute, min_execution_time);
+
+    nd->SetCpathCC(max_cc);
+  }
+
+  /** Get total computation cost.
+   */
+  float Graph::GetTotalCost(){
+    return this->total_computation_cost;
+  }
+
 
   /** Clean up the graph, destory
       everything in it.

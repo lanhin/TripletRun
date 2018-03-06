@@ -133,6 +133,14 @@ namespace triplet{
      */
     float GetWaitTime();
 
+    /** Get the critical path computation cost value of this node.
+     */
+    float GetCpathCC();
+
+    /** Set the critical path computation cost value of this node.
+     */
+    void SetCpathCC(float cc);
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -157,6 +165,7 @@ namespace triplet{
     float rank_u_HEFT; // Used in HEFT policy
     float AFT; // The actual finish time of this node
     float wait_time; // The waiting time of the node
+    float cpath_cc; // Critical path computation cost value
   };
 
   class Graph{
@@ -207,6 +216,14 @@ namespace triplet{
 	For OCT matrix construction.
      */
     int MaxNodeId();
+
+    /** Calculate the max device compute power of node ndId.
+     */
+    void CalcCpathCC(int ndId, float max_devCompute, float min_execution_time);
+
+    /** Get total computation cost.
+     */
+    float GetTotalCost();
 
     /** Clean up the graph, destory
 	everything in it.

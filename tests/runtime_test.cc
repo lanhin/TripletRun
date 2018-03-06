@@ -102,5 +102,12 @@ TEST(RuntimeTest, SchedulerCost){
   EXPECT_FLOAT_EQ(sugon[1]->GetAvaTime(), 0);
   EXPECT_FLOAT_EQ(sugon[3]->GetAvaTime(), 0);
   
-
+  triplet::Graph gr = rt.GetGraph();
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetCpathCC(), 1);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetCpathCC(), 1.75);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetCpathCC(), 1.5);
+  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetCpathCC(), 2.25);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetCpathCC(), 2);
+  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetCpathCC(), 2);
+  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetCpathCC(), 2.75);
 }

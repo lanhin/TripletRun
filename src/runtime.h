@@ -228,6 +228,9 @@ namespace triplet{
     int dev_hit_counter; // DATACENTRIC device pick hit
     int dc_valid_counter; // The times that DATACENTRIC really works
 
+    float max_cpath_cc; // Record the critical path computatin cost summary
+    float min_execution_time; // The min execution time of a task
+
     double graph_init_time;
     double cluster_init_time;
     double oct_time;
