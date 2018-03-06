@@ -35,6 +35,7 @@ namespace triplet{
     max_parallel = 0;
     max_devCompute = 0.0;
     max_cpath_cc = 0.0;
+    absCP = 0.0;
     min_execution_time = 0.0;
 
     graph_init_time = 0.0;
@@ -42,6 +43,7 @@ namespace triplet{
     oct_time = 0.0;
     rankoct_time = 0;
     rank_u_time = 0;
+    rank_d_time = 0;
 
     graph_file_name = "";
     cluster_file_name = "";
@@ -206,7 +208,10 @@ namespace triplet{
       computerset.insert(loc1);
 
       //Record the max compute power
-      this->max_devCompute = std::max(this->max_devCompute, compute1);
+      if(this->max_devCompute < compute1){
+	this->max_devCompute = compute1;
+	this->max_computeDevId = id1;
+      }
     }
 
     for (int index = 0; index < root["links"].size(); index++){
@@ -277,7 +282,7 @@ namespace triplet{
       log_end("Rank OCT calculation.");
     }
 
-    if (Scheduler == HSIP || Scheduler == HEFT){
+    if (Scheduler == HSIP || Scheduler == HEFT || Scheduler == CPOP){
       log_start("OCCW initialization...");
       global_graph.InitAllOCCW(); //OCCW for HSIP
       log_end("OCCW initialization.");
@@ -290,6 +295,18 @@ namespace triplet{
       this->rank_u_time = GET_TIMING(ranku);
       std::cout<<" Execution time of CalcRank_u():"<<GET_TIMING(ranku)<<" s"<<std::endl;
       log_end("Rank_u calculation.");
+
+      DECLARE_TIMING(rankd);
+      log_start("Rank_d calculation...");
+      START_TIMING(rankd);
+      CalcRank_d(); // Rank_d for CPOP
+      STOP_TIMING(rankd);
+      this->rank_d_time = GET_TIMING(rankd);
+      std::cout<<" Execution time of CalcRank_d():"<<GET_TIMING(rankd)<<" s"<<std::endl;
+      log_end("Rank_d calculation.");
+
+      // Calculate priority used in CPOP policy.
+      this->absCP = global_graph.CalcPriorityCPOP();
     }
 
     // Init ready_queue
@@ -568,7 +585,7 @@ namespace triplet{
 	for(auto& succ : crtNd->output){
 	  Node* succNd = global_graph.GetNode(succ);
 	  if (succNd->GetRank_u_HSIP() < 0){
-	    allSatisfied = false;    
+	    allSatisfied = false;
 	  }
 	}
 	if (!allSatisfied){
@@ -600,6 +617,88 @@ namespace triplet{
       }
     }
   }
+
+  /** Calculate rank_d, which is used in CPOP policy.
+   */
+  void Runtime::CalcRank_d(){
+
+    /** 1. Find the entry vertex, if multiple, creat a new "source" vertex.
+     */
+    int maxVertexId = 0;
+    int sourceId;
+    std::set<int> entryVertexSet;
+    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
+      if (maxVertexId < *iter){
+	maxVertexId = *iter;
+      }
+      int inputDegree = global_graph.GetNode(*iter)->GetInNum();
+      if (inputDegree == 0){ //an entry node
+	entryVertexSet.insert(*iter);
+	sourceId = *iter;
+      }
+    }
+
+    if(entryVertexSet.size() > 1){ // Multiple entry vertices
+      // create a new "source" vertex
+      sourceId = maxVertexId + 1;
+      global_graph.AddNode(sourceId, 0.1, 0.1);
+      idset.insert(sourceId);
+      for (auto& it : entryVertexSet){
+	global_graph.AddEdge(sourceId, it, 0);
+      }
+    }
+
+
+    /** 2. Traversing the DAG from the source to the exit vertex
+	and calculate the rank_d.
+    */
+    std::set<int> recent; // Store the vertex ids that calculated recently
+    // 2.1 Calculate source node's rank_d
+    Node* nd = global_graph.GetNode(sourceId);
+    nd->SetRank_d_CPOP(0);
+    recent.insert(sourceId);
+
+    // 2.2 Calculate all the others
+    while ( !recent.empty() ){
+      auto it = *(recent.begin());// The first value stored
+      recent.erase(recent.begin());
+      Node* nd = global_graph.GetNode(it);
+      for (auto& crtVertId : nd->output){
+	Node* crtNd = global_graph.GetNode(crtVertId);
+	// 2.2.0 If it has already been calculated, continue
+	if (crtNd->GetRank_d_CPOP() >= 0){
+	  continue;
+	}
+
+	// 2.2.1 If not all of the input nodes' rank_d have been calculated, continue!
+	bool allSatisfied = true;
+	for(auto& pred : crtNd->input){
+	  Node* predNd = global_graph.GetNode(pred);
+	  if (predNd->GetRank_d_CPOP() < 0){
+	    allSatisfied = false;
+	  }
+	}
+	if (!allSatisfied){
+	  continue;
+	}
+
+	// 2.2.2 Calculate rank_d for current vertex
+	float max_rankd_CPOP = 0;
+	float tmp_rankd;
+	for(auto& pred : crtNd->input){
+	  Node* predNd = global_graph.GetNode(pred);
+	  tmp_rankd = CommunicationDataSize(pred, crtVertId) / TaihuLightNetwork.GetMeanBW() + predNd->GetMeanWeight() + predNd->GetRank_d_CPOP();
+	  max_rankd_CPOP = std::max(max_rankd_CPOP, tmp_rankd);
+	}
+
+	crtNd->SetRank_d_CPOP(max_rankd_CPOP);
+
+	// 2.2.3 Add crtVertId into recent after calculation
+	recent.insert(crtVertId);
+      }
+    }
+  }
+
 
   /** Calculate normalized degree of node.
    */
@@ -952,6 +1051,7 @@ namespace triplet{
       break;
 
     case HEFT:
+    case CPOP:
     case HSIP:
     case PEFT:{
       /** Traverse all the tasks in the ready queue,
@@ -971,9 +1071,14 @@ namespace triplet{
 	    maxPriority = nd->GetRank_u_HSIP();
 	    taskIdx = *iter;
 	  }
-	}else{ //HEFT
+	}else if(Scheduler == HEFT){ //HEFT
 	  if (maxPriority < nd->GetRank_u_HEFT()){
 	    maxPriority = nd->GetRank_u_HEFT();
+	    taskIdx = *iter;
+	  }
+	}else{ //CPOP
+	  if (maxPriority < nd->GetPriorityCPOP()){
+	    maxPriority = nd->GetPriorityCPOP();
 	    taskIdx = *iter;
 	  }
 	}
@@ -1088,8 +1193,21 @@ namespace triplet{
     case DONF:
     case DONF2:
     case HEFT:
+    case CPOP:
     case HSIP:
     case PEFT:{
+      /** For tasks on critical path, assign them to the fastest device.
+       */
+      float dv = nd->GetPriorityCPOP() - this->absCP;
+      if(InnerScheduler == CPOP && dv >= ZERO_NEGATIVE && dv <= ZERO_POSITIVE){
+	dev = TaihuLight[this->max_computeDevId];
+
+#ifdef DEBUG
+	std::cout<<"[Info] Node "<<ndId<<" is a CP task, so pick device "<<this->max_computeDevId<<std::endl;
+#endif
+	break;
+      }
+
       /** Traverse all the devices,
 	  pick the one with the min EFT.
        */
@@ -1525,6 +1643,7 @@ namespace triplet{
       INSERT_ELEMENT(RR);
       INSERT_ELEMENT(PRIORITY);
       INSERT_ELEMENT(HEFT);
+      INSERT_ELEMENT(CPOP);
       INSERT_ELEMENT(PEFT);
       INSERT_ELEMENT(HSIP);
       INSERT_ELEMENT(DONF);
@@ -1578,6 +1697,7 @@ namespace triplet{
     std::cout<<"\tCalcOCT time: "<<this->oct_time<<" s"<<std::endl;
     std::cout<<"\tRank OCT time: "<<this->rankoct_time<<" s"<<std::endl;
     std::cout<<"\tRank u time: "<<this->rank_u_time<<" s"<<std::endl;
+    std::cout<<"\tRank d time: "<<this->rank_d_time<<" s"<<std::endl;
     std::cout<<"-----------------------------------"<<std::endl;
 
   }

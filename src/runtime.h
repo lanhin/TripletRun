@@ -22,6 +22,7 @@ namespace triplet{
     RR, // Round robin, pick the first task from the ready queue and put it on the next free device
     PRIORITY, // Priority, pick the priority most task and put it on the fastest device
     HEFT,
+    CPOP,
     PEFT,
     HSIP,
     DONF, // Degree of node first
@@ -107,6 +108,10 @@ namespace triplet{
 	Before call this, remember to call graph.InitAllOCCW()
      */
     void CalcRank_u();
+
+    /** Calculate rank_d, which is used in CPOP policy.
+     */
+    void CalcRank_d();
 
     /** Calculate normalized degree of node.
      */
@@ -221,7 +226,9 @@ namespace triplet{
     int RRCounter; // Counter for RR policy
     int max_devId; // Max device id in the cluster
     int max_parallel; // Max parallelism
+
     float max_devCompute; // Max device compute power
+    int max_computeDevId; // The device id that with the max compute power
 
     int task_total; // Total tasks scheduled
     int task_hit_counter; // DONF task pick hit counter
@@ -229,6 +236,7 @@ namespace triplet{
     int dc_valid_counter; // The times that DATACENTRIC really works
 
     float max_cpath_cc; // Record the critical path computatin cost summary
+    float absCP; // The |CP| value used in device selection phase of CPOP policy
     float min_execution_time; // The min execution time of a task
 
     double graph_init_time;
@@ -236,6 +244,7 @@ namespace triplet{
     double oct_time;
     double rankoct_time;
     double rank_u_time;
+    double rank_d_time;
 
     std::string graph_file_name;
     std::string cluster_file_name;

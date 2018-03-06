@@ -12,7 +12,7 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0) {}
+    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), rank_d_CPOP(-1), priority_CPOP(0) {}
   Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
@@ -20,9 +20,11 @@ namespace triplet{
     rank_OCT = 0;
     rank_u_HSIP = -1;
     rank_u_HEFT = -1;
+    rank_d_CPOP = -1;
     mean_weight = -1.0;
     wait_time = 0.0;
     cpath_cc = 0.0;
+    priority_CPOP = 0.0;
   }
 
   Node::~Node(){
@@ -220,6 +222,33 @@ namespace triplet{
     this->cpath_cc = cc;
   }
 
+  /** Get the rank_d used in CPOP policy.
+   */
+  float Node::GetRank_d_CPOP(){
+    return this->rank_d_CPOP;
+  }
+
+  /** Set the rank_d used in CPOP policy.
+   */
+  void Node::SetRank_d_CPOP(float rankd){
+    assert(rankd > ZERO_NEGATIVE);
+    this->rank_d_CPOP = rankd;
+  }
+
+
+  /** Set the priority of CPOP policy.
+   */
+  void Node::SetPriorityCPOP(float priority){
+    assert(priority > ZERO_NEGATIVE);
+    this->priority_CPOP = priority;
+  }
+
+  /** Get the priority of CPOP policy.
+   */
+  float Node::GetPriorityCPOP(){
+    return this->priority_CPOP;
+  }
+
 
   // class graph
   Graph::Graph(){
@@ -373,6 +402,21 @@ namespace triplet{
       it.second->SetOCCW(OCCW(it.first));
     }
   }
+
+  /** Calculate the priority value used in CPOP policy.
+      Return the max priority value, which is the absCP in CPOP.
+   */
+  float Graph::CalcPriorityCPOP(){
+    float tmpPriority, maxPriority = 0;
+    for (auto& it : graph_) {
+      tmpPriority = it.second->GetRank_u_HEFT() + it.second->GetRank_d_CPOP();
+      it.second->SetPriorityCPOP(tmpPriority);
+      maxPriority = std::max(maxPriority, tmpPriority);
+    }
+
+    return maxPriority;
+  }
+
 
   /** Return the max node id in the graph.
       For OCT matrix construction.

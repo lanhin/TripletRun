@@ -111,3 +111,37 @@ TEST(RuntimeTest, SchedulerCost){
   EXPECT_FLOAT_EQ(gr.GetNode(5)->GetCpathCC(), 2);
   EXPECT_FLOAT_EQ(gr.GetNode(8)->GetCpathCC(), 2.75);
 }
+
+TEST(RuntimeTest, CPOPRank){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test.json");
+  rt.InitCluster("cluster_test.json");
+  rt.InitRuntime(triplet::CPOP);
+  
+  triplet::Graph gr = rt.GetGraph();
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetRank_d_CPOP(), 0);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetRank_d_CPOP(), 1.75);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetRank_d_CPOP(), 2.166667);
+  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetRank_d_CPOP(), 3.416667);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetRank_d_CPOP(), 3.25);
+  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetRank_d_CPOP(), 3.25);
+  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetRank_d_CPOP(), 4.416667);
+
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetRank_u_HEFT(), 5.0833335);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetRank_u_HEFT(), 3.3333333);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetRank_u_HEFT(), 2.7500002);
+  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetRank_u_HEFT(), 1.6666667);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetRank_u_HEFT(), 1.4166667);
+  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetRank_u_HEFT(), 1.6666667);
+  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetRank_u_HEFT(), 0.6666667);
+
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetPriorityCPOP(), 5.083333);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetPriorityCPOP(), 5.083333);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetPriorityCPOP(), 4.916667);
+  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetPriorityCPOP(), 5.083333);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetPriorityCPOP(), 4.666667);
+  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetPriorityCPOP(), 4.916667);
+  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetPriorityCPOP(), 5.083333);
+
+  rt.Execute();
+}

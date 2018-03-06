@@ -141,6 +141,23 @@ namespace triplet{
      */
     void SetCpathCC(float cc);
 
+    /** Get the rank_d used in CPOP policy.
+     */
+    float GetRank_d_CPOP();
+
+    /** Set the rank_d used in CPOP policy.
+     */
+    void SetRank_d_CPOP(float rankd);
+
+    /** Set the priority of CPOP policy.
+     */
+    void SetPriorityCPOP(float priority);
+
+    /** Get the priority of CPOP policy.
+     */
+    float GetPriorityCPOP();
+
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -163,6 +180,8 @@ namespace triplet{
     float rank_OCT; // Used in PEFT as the priority.
     float rank_u_HSIP; // Used in HSIP policy
     float rank_u_HEFT; // Used in HEFT policy
+    float rank_d_CPOP; // Rank_d used in CPOP policy
+    float priority_CPOP; // Priority = rank_u_HEFT + rank_d_CPOP
     float AFT; // The actual finish time of this node
     float wait_time; // The waiting time of the node
     float cpath_cc; // Critical path computation cost value
@@ -211,6 +230,11 @@ namespace triplet{
     /** Calculate all the OCCWs of all the nodes.
      */
     void InitAllOCCW();
+
+    /** Calculate the priority value used in CPOP policy.
+	Return the max priority value, which is the absCP in CPOP.
+     */
+    float CalcPriorityCPOP();
 
     /** Return the max node id in the graph.
 	For OCT matrix construction.
