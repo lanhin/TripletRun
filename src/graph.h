@@ -249,6 +249,22 @@ namespace triplet{
      */
     float GetTotalCost();
 
+    /** Set source vertex id.
+     */
+    void SetSourceId(int source);
+
+    /** Get source vertex id.
+     */
+    int GetSourceId();
+
+    /** Set sink vertex id.
+     */
+    void SetSinkId(int sink);
+
+    /** Get sink vertex id.
+     */
+    int GetSinkId();
+
     /** Clean up the graph, destory
 	everything in it.
      */
@@ -265,6 +281,8 @@ namespace triplet{
     int numEdge;
     int numNode;
     int maxNode; //Max node id
+    int sourceId; // Source vertex id
+    int sinkId; // Sink vertex id
 
     /* TODO: Record accuracy. */
     float total_computation_cost; //Summary of computation cost

@@ -130,6 +130,58 @@ namespace triplet{
 #endif
     }
 
+    /** Add source and sink vertex if need.
+     */
+    /** 1. Find the entry and exit vertex,
+	if multiple, creat new "source" and "sink" vertice.
+     */
+    int maxVertexId = 0;
+    int sourceId, sinkId;
+    std::set<int> entryVertexSet;
+    std::set<int> exitVertexSet;
+    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
+      if (maxVertexId < *iter){
+	maxVertexId = *iter;
+      }
+
+      int inputDegree = global_graph.GetNode(*iter)->GetInNum();
+      if (inputDegree == 0){ //an entry node
+	entryVertexSet.insert(*iter);
+	sourceId = *iter;
+      }
+
+      int outputDegree = global_graph.GetNode(*iter)->GetOutNum();
+      if (outputDegree == 0){ //an exit node
+	exitVertexSet.insert(*iter);
+	sinkId = *iter;
+      }
+
+    }
+
+    if(entryVertexSet.size() > 1){ // Multiple entry vertices
+      // create a new "source" vertex
+      sourceId = ++maxVertexId;
+      global_graph.AddNode(sourceId, 0.1, 0.1);
+      idset.insert(sourceId);
+      for (auto& it : entryVertexSet){
+	global_graph.AddEdge(sourceId, it, 0);
+      }
+    }
+
+    if(exitVertexSet.size() > 1){ // Multiple exit vertices
+      // create a new "sink" vertex
+      sinkId = ++maxVertexId;
+      global_graph.AddNode(sinkId, 0.1, 0.1);
+      idset.insert(sinkId);
+      for (auto& it : exitVertexSet){
+	global_graph.AddEdge(it, sinkId, 0);
+      }
+    }
+
+    global_graph.SetSourceId(sourceId);
+    global_graph.SetSinkId(sinkId);
+
+
     // Summary report of the graph
     global_graph.SummaryReport();
 #if 0
@@ -348,8 +400,9 @@ namespace triplet{
 
     /** 1. Find the exit vertex, if multiple, creat a new "sink" vertex.
      */
+    int sinkId = global_graph.GetSinkId();
+    /*
     int maxVertexId = 0;
-    int sinkId;
     std::set<int> exitVertexSet;
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       if (maxVertexId < *iter){
@@ -370,7 +423,7 @@ namespace triplet{
       for (auto& it : exitVertexSet){
 	global_graph.AddEdge(it, sinkId, 0);
       }
-    }
+      }*/
 
 
     /** 2. Traversing the DAG from the exit to the entry vertex
@@ -530,8 +583,9 @@ namespace triplet{
 
     /** 1. Find the exit vertex, if multiple, creat a new "sink" vertex.
      */
+    int sinkId = global_graph.GetSinkId();
+    /*
     int maxVertexId = 0;
-    int sinkId;
     std::set<int> exitVertexSet;
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       if (maxVertexId < *iter){
@@ -552,7 +606,7 @@ namespace triplet{
       for (auto& it : exitVertexSet){
 	global_graph.AddEdge(it, sinkId, 0);
       }
-    }
+      }*/
 
     /** 2. Traversing the DAG from the exit to the entry vertex
 	and calculate the rank_u. Deal the cross-level edges carefully.
@@ -624,8 +678,9 @@ namespace triplet{
 
     /** 1. Find the entry vertex, if multiple, creat a new "source" vertex.
      */
+    int sourceId = global_graph.GetSourceId();
+    /*
     int maxVertexId = 0;
-    int sourceId;
     std::set<int> entryVertexSet;
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       if (maxVertexId < *iter){
@@ -646,7 +701,7 @@ namespace triplet{
       for (auto& it : entryVertexSet){
 	global_graph.AddEdge(sourceId, it, 0);
       }
-    }
+    }*/
 
 
     /** 2. Traversing the DAG from the source to the exit vertex

@@ -255,6 +255,8 @@ namespace triplet{
     numEdge = 0;
     numNode = 0;
     maxNode = -1;
+    sourceId = -1;
+    sinkId = -1;
 
     total_computation_cost = 0.0;
     total_memory_cost = 0.0;
@@ -444,6 +446,32 @@ namespace triplet{
    */
   float Graph::GetTotalCost(){
     return this->total_computation_cost;
+  }
+
+  /** Set source vertex id.
+   */
+  void Graph::SetSourceId(int source){
+    assert(source >= 0);
+    this->sourceId = source;
+  }
+
+  /** Get source vertex id.
+   */
+  int Graph::GetSourceId(){
+    return this->sourceId;
+  }
+
+  /** Set sink vertex id.
+   */
+  void Graph::SetSinkId(int sink){
+    assert(sink >= 0);
+    this->sinkId = sink;
+  }
+
+  /** Get sink vertex id.
+   */
+  int Graph::GetSinkId(){
+    return this->sinkId;
   }
 
 
