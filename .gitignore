@@ -45,3 +45,6 @@ input/
 # output
 output/
 output*
+
+# opfiles
+utils/opfiles
