@@ -27,7 +27,9 @@ if [ $# -lt 1 -o $# -gt 2 ]; then
     exit 1
 fi
 
+# for multi-threads
 tempfifo=$$.fifo
+
 OPTIONSFILE=$1
 
 if [ $# -eq 2 ]; then
@@ -38,6 +40,7 @@ fi
 
 echo "n="$n
 
+# for multi-threads
 trap "exec 1000>&-;exec 1000<&-;exit 0" 2
 mkfifo $tempfifo
 exec 1000<>$tempfifo
@@ -55,6 +58,10 @@ if [ -f $OPTIONSFILE ]; then
  #   cat $OPTIONSFILE | while read LINE
     for LINE in `cat $OPTIONSFILE`
     do
+	if [[ $LINE == \#* ]]; then
+	    # A comment line
+	    continue
+	fi
 	IFS="$OLD_IFS"
 	read -u1000
 	{

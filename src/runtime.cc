@@ -818,7 +818,7 @@ namespace triplet{
 	  this->max_cpath_cc = std::max(this->max_cpath_cc, nd->GetCpathCC());
 
 	  int devId = nd->GetOccupied();
-#if 1
+#if 0
 	  std::cout<<"Node "<<it->first<<" finished execution at "<<global_timer<< ". It used device "<<devId<<std::endl;
 #endif
 	  // Set the finished_tasks properly
@@ -1036,8 +1036,8 @@ namespace triplet{
 #endif
 #if 1
 	//Debug
-	std::cout<<"Schedule node "<<task_node_id<<" onto Device "<<dev->GetId();
-	std::cout<<", global time = "<<global_timer<<" s, expected transmission time = "<<transmission_time<<" s, execution time = "<<execution_time<<" s."<<std::endl;
+	std::cout<<"Node "<<task_node_id<<" on "<<dev->GetId();
+	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<std::endl;
 #endif
 #if 0
 	std::cout<<"Device ava time updated to: "<<dev->GetAvaTime()<<"s, Node AFT updated to: "<<nd->GetAFT()<<std::endl;
