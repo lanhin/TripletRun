@@ -44,6 +44,7 @@ namespace triplet{
     rankoct_time = 0;
     rank_u_time = 0;
     rank_d_time = 0;
+    ndon_time = 0;
 
     graph_file_name = "";
     cluster_file_name = "";
@@ -361,6 +362,18 @@ namespace triplet{
       this->absCP = global_graph.CalcPriorityCPOP();
     }
 
+    if (Scheduler == DONF || Scheduler == DONF2){
+      DECLARE_TIMING(NDON);
+      log_start("NDON calculation...");
+      START_TIMING(NDON);
+      CalcNDON();
+      STOP_TIMING(NDON);
+      this->ndon_time = GET_TIMING(NDON);
+      std::cout<<" Execution time of CalcNDON():"<<GET_TIMING(NDON)<<" s"<<std::endl;
+      log_end("NDON calculation.");
+
+    }
+
     // Init ready_queue
     for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
       int pend = global_graph.GetNode(*iter)->GetInNum();
@@ -676,33 +689,9 @@ namespace triplet{
    */
   void Runtime::CalcRank_d(){
 
-    /** 1. Find the entry vertex, if multiple, creat a new "source" vertex.
+    /** 1. Find the "source" vertex.
      */
     int sourceId = global_graph.GetSourceId();
-    /*
-    int maxVertexId = 0;
-    std::set<int> entryVertexSet;
-    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
-      if (maxVertexId < *iter){
-	maxVertexId = *iter;
-      }
-      int inputDegree = global_graph.GetNode(*iter)->GetInNum();
-      if (inputDegree == 0){ //an entry node
-	entryVertexSet.insert(*iter);
-	sourceId = *iter;
-      }
-    }
-
-    if(entryVertexSet.size() > 1){ // Multiple entry vertices
-      // create a new "source" vertex
-      sourceId = maxVertexId + 1;
-      global_graph.AddNode(sourceId, 0.1, 0.1);
-      idset.insert(sourceId);
-      for (auto& it : entryVertexSet){
-	global_graph.AddEdge(sourceId, it, 0);
-      }
-    }*/
-
 
     /** 2. Traversing the DAG from the source to the exit vertex
 	and calculate the rank_d.
@@ -760,21 +749,32 @@ namespace triplet{
   float Runtime::NDON(Node * nd, int degree){
     // Only support degree = 1 or 2 at present.
     assert(degree >= 1 && degree <= 2);
-    float normdegree = 0;
-    for (auto it : nd->output) {
-      Node * succNd = global_graph.GetNode(it);
-      normdegree += 1 / (float)succNd->GetInNum();
-      if(degree == 2){
-	for (auto it2 : succNd->output) {
-	  normdegree += 0.5 * 1 / (float)global_graph.GetNode(it2)->GetInNum();
-	}
+    float normdegree = nd->GetNDON();
+    if(degree == 2){
+      for (auto it : nd->output) {
+	normdegree += 0.5 * global_graph.GetNode(it)->GetNDON();
       }
     }
+
 #ifdef DEBUG
     std::cout<<"Norm degree of node "<<nd->GetId()<<": "<<normdegree<<std::endl;
 #endif
     return normdegree;
   }
+
+  /** Calculate NDON for all nodes in initruntime().
+   */
+  void Runtime::CalcNDON(){
+    for (auto it : idset) {
+      float normdegree = 0;
+      Node* crtNd = global_graph.GetNode(it);
+      for (auto succit : crtNd->output) {
+	normdegree += 1.0 / global_graph.GetNode(succit)->GetInNum();
+      }
+      crtNd->SetNDON(normdegree);
+    }
+  }
+
 
   /** The whole execution logic.
    */
@@ -1753,6 +1753,7 @@ namespace triplet{
     std::cout<<"\tRank OCT time: "<<this->rankoct_time<<" s"<<std::endl;
     std::cout<<"\tRank u time: "<<this->rank_u_time<<" s"<<std::endl;
     std::cout<<"\tRank d time: "<<this->rank_d_time<<" s"<<std::endl;
+    std::cout<<"\tNDON time: "<<this->ndon_time<<" s"<<std::endl;
     std::cout<<"-----------------------------------"<<std::endl;
 
   }

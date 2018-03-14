@@ -117,6 +117,10 @@ namespace triplet{
      */
     float NDON(Node * nd, int degree = 1);
 
+    /** Calculate NDON for all nodes in initruntime().
+     */
+    void CalcNDON();
+
     /** The whole execution logic.
      */
     // TODO: Count the schduling time itself
@@ -245,6 +249,7 @@ namespace triplet{
     double rankoct_time;
     double rank_u_time;
     double rank_d_time;
+    double ndon_time;
 
     std::string graph_file_name;
     std::string cluster_file_name;

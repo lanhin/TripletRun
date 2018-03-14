@@ -157,6 +157,14 @@ namespace triplet{
      */
     float GetPriorityCPOP();
 
+    /** Set NDON value.
+     */
+    void SetNDON(float degree);
+
+    /** Get NDON value.
+     */
+    float GetNDON();
+
 
     /** The id set of the succ nodes.
      */
@@ -185,6 +193,7 @@ namespace triplet{
     float AFT; // The actual finish time of this node
     float wait_time; // The waiting time of the node
     float cpath_cc; // Critical path computation cost value
+    float NDON; // Normalized degree of node
   };
 
   class Graph{
