@@ -45,6 +45,8 @@ namespace triplet{
     rank_u_time = 0;
     rank_d_time = 0;
     ndon_time = 0;
+    task_pick_time = 0;
+    device_pick_time = 0;
 
     graph_file_name = "";
     cluster_file_name = "";
@@ -736,6 +738,9 @@ namespace triplet{
   void Runtime::Execute(){
     log_start("Execution...");
 
+    DECLARE_TIMING(taskpick);
+    DECLARE_TIMING(devicepick);
+
     // Execute until all three queues/lists are empty
     while (!ready_queue.empty() || !execution_queue.empty() || !block_free_queue.empty()) {
       /** 0. if a memory block's refer number can be decreased
@@ -836,7 +841,9 @@ namespace triplet{
 	max_parallel = std::max(max_parallel, (int)(ready_queue.size() + execution_queue.size()));
 
 	//2.1 pick a task from ready_queue (default: choose the first one element)
+	START_TIMING(taskpick);
 	int task_node_id = TaskPick();
+	STOP_TIMING(taskpick);
 
 	/** Task counter: total tasks and tasks that DONF hits
 	 */
@@ -855,22 +862,6 @@ namespace triplet{
 	  }
 	}
 
-	/*
-	float maxOutDegree = -1;
-	std::vector<int>::iterator iter = ready_queue.begin();
-	for (; iter != ready_queue.end(); iter++){
-	  Node* nd = global_graph.GetNode(*iter);
-	  float degree = NDON(nd);
-	  if (maxOutDegree < degree){
-	    maxOutDegree = degree;
-	  }
-	}
-	Node* pickednd = global_graph.GetNode(task_node_id);
-	if(NDON(pickednd)+ZERO_POSITIVE > maxOutDegree){
-	  task_hit_counter++;
-	  }*/
-
-
 	Node* nd = global_graph.GetNode(task_node_id);
 
 	//2.2 choose a free device to execute the task (default: choose the first free device)
@@ -883,7 +874,9 @@ namespace triplet{
 	  continue;
 	}
 	// Entry task duplication policy doesn't need this.
+	START_TIMING(devicepick);
 	Device* dev = DevicePick(task_node_id);
+	STOP_TIMING(devicepick);
 
 	/** Test if DATACENTRIC could hit this pick.
 	 */
@@ -1002,6 +995,9 @@ namespace triplet{
        */
       global_timer = CalcNearestFinishTime();
     }
+
+    this->task_pick_time = GET_TOTAL_TIMING(taskpick);
+    this->device_pick_time = GET_TOTAL_TIMING(devicepick);
 
     // Finish running
     // Write simulation report.
@@ -1708,6 +1704,8 @@ namespace triplet{
     std::cout<<"\tRank u time: "<<this->rank_u_time<<" s"<<std::endl;
     std::cout<<"\tRank d time: "<<this->rank_d_time<<" s"<<std::endl;
     std::cout<<"\tNDON time: "<<this->ndon_time<<" s"<<std::endl;
+    std::cout<<"\tTask pick time: "<<this->task_pick_time<<" s"<<std::endl;
+    std::cout<<"\tDevice pick time: "<<this->device_pick_time<<" s"<<std::endl;
     std::cout<<"-----------------------------------"<<std::endl;
 
   }

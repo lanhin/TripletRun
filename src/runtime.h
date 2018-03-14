@@ -250,6 +250,8 @@ namespace triplet{
     double rank_u_time;
     double rank_d_time;
     double ndon_time;
+    double task_pick_time;
+    double device_pick_time;
 
     std::string graph_file_name;
     std::string cluster_file_name;
