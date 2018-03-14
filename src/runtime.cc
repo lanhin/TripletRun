@@ -411,32 +411,9 @@ namespace triplet{
      */
     int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
 
-    /** 1. Find the exit vertex, if multiple, creat a new "sink" vertex.
+    /** 1. Find the "sink" vertex.
      */
     int sinkId = global_graph.GetSinkId();
-    /*
-    int maxVertexId = 0;
-    std::set<int> exitVertexSet;
-    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
-      if (maxVertexId < *iter){
-	maxVertexId = *iter;
-      }
-      int outputDegree = global_graph.GetNode(*iter)->GetOutNum();
-      if (outputDegree == 0){ //an exit node
-	exitVertexSet.insert(*iter);
-	sinkId = *iter;
-      }
-    }
-
-    if(exitVertexSet.size() > 1){ // Multiple exit vertices
-      // create a new "sink" vertex
-      sinkId = maxVertexId + 1;
-      global_graph.AddNode(sinkId, 0.1, 0.1);
-      idset.insert(sinkId);
-      for (auto& it : exitVertexSet){
-	global_graph.AddEdge(it, sinkId, 0);
-      }
-      }*/
 
 
     /** 2. Traversing the DAG from the exit to the entry vertex
@@ -594,32 +571,9 @@ namespace triplet{
    */
   void Runtime::CalcRank_u(){
 
-    /** 1. Find the exit vertex, if multiple, creat a new "sink" vertex.
+    /** 1. Find the "sink" vertex.
      */
     int sinkId = global_graph.GetSinkId();
-    /*
-    int maxVertexId = 0;
-    std::set<int> exitVertexSet;
-    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
-      if (maxVertexId < *iter){
-	maxVertexId = *iter;
-      }
-      int outputDegree = global_graph.GetNode(*iter)->GetOutNum();
-      if (outputDegree == 0){ //an exit node
-	exitVertexSet.insert(*iter);
-	sinkId = *iter;
-      }
-    }
-
-    if(exitVertexSet.size() > 1){ // Multiple exit vertices
-      // create a new "sink" vertex
-      sinkId = maxVertexId + 1;
-      global_graph.AddNode(sinkId, 0.1, 0.1);
-      idset.insert(sinkId);
-      for (auto& it : exitVertexSet){
-	global_graph.AddEdge(it, sinkId, 0);
-      }
-      }*/
 
     /** 2. Traversing the DAG from the exit to the entry vertex
 	and calculate the rank_u. Deal the cross-level edges carefully.
