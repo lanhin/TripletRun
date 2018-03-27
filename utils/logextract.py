@@ -18,14 +18,14 @@ if (len(sys.argv)) != 2:
     exit(1)
 
 def output(extractlist, fileout):
-    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time']
+    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency']
     extractlist.insert(0, header)
     with open (fileout, "wb") as f:
         writer = csv.writer(f)
         writer.writerows(extractlist)
 
 def fileprocess(filein):
-    entry = ['']*9
+    entry = ['']*12
     with open(filein, "rb") as source:
         startprocess = False
         for line in source:
@@ -48,6 +48,12 @@ def fileprocess(filein):
                     entry[7] = line.strip().split(': ')[-1]
                 if "Total execution" in line:
                     entry[8] = line.strip().split(': ')[-1]
+                if "SLR" in line:
+                    entry[9] = line.strip().split(': ')[-1]
+                if "Speedup" in line:
+                    entry[10] = line.strip().split(': ')[-1]
+                if "Efficiency" in line:
+                    entry[11] = line.strip().split(': ')[-1]
             elif "Simulation Report" in line:
                 startprocess = True
     return entry
