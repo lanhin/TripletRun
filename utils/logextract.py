@@ -13,6 +13,8 @@ import sys
 import csv
 import os
 
+errorfiles=list()
+
 if (len(sys.argv)) != 2:
     print("Usage: python logextract.py <logfiledir>")
     exit(1)
@@ -56,11 +58,15 @@ def fileprocess(filein):
                     entry[11] = line.strip().split(': ')[-1]
             elif "Simulation Report" in line:
                 startprocess = True
+    if entry[0] == '':
+        print("file error:", filein)
+        errorfiles.append(filein)
     return entry
 
 def main():
     filedir = sys.argv[1]
     fileout = filedir + '.csv'
+    errorfilelists = filedir + '.err'
 
     if not os.path.exists(filedir):
         print("Error: the input dir", filedir, "doesn't exist!")
@@ -72,6 +78,7 @@ def main():
 
     print("Process dir: ", filedir)
     print("Output file: ", fileout)
+    print("Error file list: ", errorfilelists)
     if os.path.isfile(fileout):
         print("Output file already exists, remove it...")
         os.remove(fileout)
@@ -83,6 +90,11 @@ def main():
         extract.append(fileprocess(fileinput))
 
     output(extract, fileout)
+
+    with open(errorfilelists, "wb") as errf:
+        for item in errorfiles:
+            print (item)
+            errf.write(item + '\n')
 
 if __name__ == "__main__":
     main()
