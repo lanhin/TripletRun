@@ -48,3 +48,6 @@ output*
 
 # opfiles
 utils/opfiles
+
+# csv result files
+*.csv

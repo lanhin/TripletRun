@@ -20,14 +20,15 @@ if (len(sys.argv)) != 2:
     exit(1)
 
 def output(extractlist, fileout):
-    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency']
+    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency', 'dev used']
     extractlist.insert(0, header)
     with open (fileout, "wb") as f:
         writer = csv.writer(f)
         writer.writerows(extractlist)
 
 def fileprocess(filein):
-    entry = ['']*12
+    entry = ['']*13
+    devused = 0
     with open(filein, "rb") as source:
         startprocess = False
         for line in source:
@@ -56,6 +57,11 @@ def fileprocess(filein):
                     entry[10] = line.strip().split(': ')[-1]
                 if "Efficiency" in line:
                     entry[11] = line.strip().split(': ')[-1]
+                if "occupied time" in line:
+                    occutime = line.strip().split('occupied time:')[1].split(' ')[0]
+                    if float(occutime) > 0:
+                        devused += 1
+                        entry[12] = devused
             elif "Simulation Report" in line:
                 startprocess = True
     if entry[0] == '':
@@ -91,10 +97,11 @@ def main():
 
     output(extract, fileout)
 
+    print("[Error files]:")
     with open(errorfilelists, "wb") as errf:
         for item in errorfiles:
             print (item)
-            errf.write(item + '\n')
+            errf.write(' ' + item + '\n')
 
 if __name__ == "__main__":
     main()
