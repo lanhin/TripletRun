@@ -165,6 +165,14 @@ namespace triplet{
      */
     float GetNDON();
 
+    /** Set rank_ADON value.
+     */
+    void SetRank_ADON(float degree);
+
+    /** Get rank_ADON value.
+     */
+    float GetRank_ADON();
+
 
     /** The id set of the succ nodes.
      */
@@ -194,6 +202,7 @@ namespace triplet{
     float wait_time; // The waiting time of the node
     float cpath_cc; // Critical path computation cost value
     float NDON; // Normalized degree of node
+    float rank_ADON; // Rank used in ADON policy
   };
 
   class Graph{

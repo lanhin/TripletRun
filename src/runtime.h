@@ -27,6 +27,7 @@ namespace triplet{
     HSIP,
     DONF, // Degree of node first
     DONF2, // 2-degree degree of node first
+    ADON, // All-level degree of node
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
@@ -120,6 +121,10 @@ namespace triplet{
     /** Calculate NDON for all nodes in initruntime().
      */
     void CalcNDON();
+
+    /** Calculate ADON for all nodes in initruntime().
+     */
+    void CalcADON();
 
     /** The whole execution logic.
      */

@@ -145,3 +145,21 @@ TEST(RuntimeTest, CPOPRank){
 
   rt.Execute();
 }
+
+TEST(RuntimeTest, ADONRank){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test.json");
+  rt.InitCluster("cluster_test.json");
+  rt.InitRuntime(triplet::ADON);
+
+  triplet::Graph gr = rt.GetGraph();
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetRank_ADON(), 3.8333333);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetRank_ADON(), 1.8333333);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetRank_ADON(), 1.8333333);
+  EXPECT_FLOAT_EQ(gr.GetNode(3)->GetRank_ADON(), 0.3333333);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetRank_ADON(), 0.3333333);
+  EXPECT_FLOAT_EQ(gr.GetNode(5)->GetRank_ADON(), 0.3333333);
+  EXPECT_FLOAT_EQ(gr.GetNode(8)->GetRank_ADON(), 0);
+
+  rt.Execute();
+}

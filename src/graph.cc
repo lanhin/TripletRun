@@ -12,7 +12,7 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0) {}
+    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1) {}
   Node::Node(int id, float compDmd, float dataDmd){
     id_ = id;
     computing_demand = compDmd;
@@ -25,6 +25,7 @@ namespace triplet{
     wait_time = 0.0;
     cpath_cc = 0.0;
     NDON = 0.0;
+    rank_ADON = -1;
     priority_CPOP = 0.0;
   }
 
@@ -263,6 +264,19 @@ namespace triplet{
     return this->NDON;
   }
 
+
+  /** Set rank_ADON value.
+   */
+  void Node::SetRank_ADON(float degree){
+    assert(degree >= 0.0);
+    this->rank_ADON = degree;
+  }
+
+  /** Get rank_ADON value.
+   */
+  float Node::GetRank_ADON(){
+    return this->rank_ADON;
+  }
 
 
   // class graph

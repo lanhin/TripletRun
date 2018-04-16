@@ -364,14 +364,18 @@ namespace triplet{
       this->absCP = global_graph.CalcPriorityCPOP();
     }
 
-    if (Scheduler == DONF || Scheduler == DONF2){
+    if (Scheduler == DONF || Scheduler == DONF2 || Scheduler == ADON){
       DECLARE_TIMING(NDON);
       log_start("NDON calculation...");
       START_TIMING(NDON);
       CalcNDON();
+      if(Scheduler == ADON){
+	CalcADON();
+      }
       STOP_TIMING(NDON);
       this->ndon_time = GET_TIMING(NDON);
       std::cout<<" Execution time of CalcNDON():"<<GET_TIMING(NDON)<<" s"<<std::endl;
+
       log_end("NDON calculation.");
 
     }
@@ -731,6 +735,60 @@ namespace triplet{
     }
   }
 
+  /** Calculate ADON for all nodes in initruntime().
+   */
+  void Runtime::CalcADON(){
+    /** 1. Find the "sink" vertex.
+     */
+    int sinkId = global_graph.GetSinkId();
+
+    /** 2. Traversing the DAG from the exit to the entry vertex
+	and calculate the rank_ADON.
+    */
+    std::set<int> recent; // Store the vertex ids that calculated recently
+    // 2.1 Calculate sink node's rank_ADON
+    Node* nd = global_graph.GetNode(sinkId);
+    nd->SetRank_ADON(0);
+    recent.insert(sinkId);
+
+    // 2.2 Calculate all the others
+    while ( !recent.empty() ){
+      auto it = *(recent.begin());// The first value stored
+      recent.erase(recent.begin());
+      Node* nd = global_graph.GetNode(it);
+      for (auto& crtVertId : nd->input){
+
+	Node* crtNd = global_graph.GetNode(crtVertId);
+	// 2.2.0 If it has already been calculated, continue
+	if (crtNd->GetRank_ADON() >= 0){
+	  continue;
+	}
+
+	// 2.2.1 If not all of the output nodes' rank_ADON have been calculated, continue!
+	bool allSatisfied = true;
+	for(auto& succ : crtNd->output){
+	  Node* succNd = global_graph.GetNode(succ);
+	  if (succNd->GetRank_ADON() < 0){
+	    allSatisfied = false;
+	  }
+	}
+	if (!allSatisfied){
+	  continue;
+	}
+
+	// 2.2.2 Calculate rank_ADON for current vertex
+	float tmp_rank_ADON = crtNd->GetNDON();
+	for(auto& succ : crtNd->output){
+	  Node* succNd = global_graph.GetNode(succ);
+	  tmp_rank_ADON += 0.5 * succNd->GetRank_ADON();
+	}
+	crtNd->SetRank_ADON(tmp_rank_ADON);
+
+	// 2.2.3 Add crtVertId into recent after calculation
+	recent.insert(crtVertId);
+      }
+    }
+  }
 
   /** The whole execution logic.
    */
@@ -1093,12 +1151,15 @@ namespace triplet{
 
     case DATACENTRIC:
     case DONF:
-    case DONF2:{
+    case DONF2:
+    case ADON:{
       float degree, maxOutDegree = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
       for (; iter != ready_queue.end(); iter++){
 	Node* nd = global_graph.GetNode(*iter);
-	if( Scheduler == DONF2){
+	if( Scheduler == ADON ){ // ADON
+	  degree = nd->GetRank_ADON();
+	}else if( Scheduler == DONF2 ){ // DONF2
 	  degree = NDON(nd, 2);
 	}else{ // DC, DONF
 	  degree = NDON(nd);
@@ -1197,6 +1258,7 @@ namespace triplet{
     case SJF:
     case DONF:
     case DONF2:
+    case ADON:
     case HEFT:
     case CPOP:
     case HSIP:
@@ -1653,6 +1715,7 @@ namespace triplet{
       INSERT_ELEMENT(HSIP);
       INSERT_ELEMENT(DONF);
       INSERT_ELEMENT(DONF2);
+      INSERT_ELEMENT(ADON);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT
