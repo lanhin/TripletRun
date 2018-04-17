@@ -37,6 +37,7 @@ namespace triplet{
     max_cpath_cc = 0.0;
     absCP = 0.0;
     min_execution_time = 0.0;
+    alpha_DON = 0.5;
 
     graph_init_time = 0.0;
     cluster_init_time = 0.0;
@@ -712,7 +713,7 @@ namespace triplet{
     float normdegree = nd->GetNDON();
     if(degree == 2){
       for (auto it : nd->output) {
-	normdegree += 0.5 * global_graph.GetNode(it)->GetNDON();
+	normdegree += this->alpha_DON * global_graph.GetNode(it)->GetNDON();
       }
     }
 
@@ -780,7 +781,7 @@ namespace triplet{
 	float tmp_rank_ADON = crtNd->GetNDON();
 	for(auto& succ : crtNd->output){
 	  Node* succNd = global_graph.GetNode(succ);
-	  tmp_rank_ADON += 0.5 * succNd->GetRank_ADON();
+	  tmp_rank_ADON += this->alpha_DON * succNd->GetRank_ADON();
 	}
 	crtNd->SetRank_ADON(tmp_rank_ADON);
 
@@ -1696,6 +1697,18 @@ namespace triplet{
     assert(sc >= 0.0);
     scheduler_mean_cost = sc;
   }
+
+  /** Set alpha value of ADON and DONF2 policy.
+   */
+  void Runtime::SetAlpha(float alpha){
+    assert(alpha >= ZERO_NEGATIVE);
+    this->alpha_DON = alpha;
+#ifdef DEBUG
+    std::cout<<"Set alpha as: "<<alpha<<std::endl;
+    std::cout<<"Check alpha: "<<this->alpha_DON<<std::endl;
+#endif
+  }
+
 
 
   /** Output SchedulePolicy as enum items.

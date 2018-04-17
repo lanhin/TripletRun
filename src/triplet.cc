@@ -84,11 +84,13 @@ int main(int argc, char *argv[])
   int c;
   float dcratio = 1.0;
   float scheduler_cost = 0.0;
+  float alpha = 0.5;
 
   while (1) {
     int this_option_optind = optind ? optind : 1;
     int option_index = 0;
     static struct option long_options[] = {
+      {"alpha", 1, 0, 'a'},
       {"help", 0, 0, 'h'},
       {"graph", 1, 0, 'g'},
       {"cluster", 1, 0, 'c'},
@@ -98,12 +100,16 @@ int main(int argc, char *argv[])
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "c:d:g:hs:t:",
+    c = getopt_long(argc, argv, "a:c:d:g:hs:t:",
 		    long_options, &option_index);
     if (c == -1)
       break;
 
     switch (c) {
+    case 'a':
+      assert(optarg);
+      alpha = atof(optarg);
+      break;
     case 'c':
       assert(optarg);
       clusterfile = optarg;
@@ -193,6 +199,7 @@ int main(int argc, char *argv[])
   STOP_TIMING(cluster);
   std::cout<<" Cluster init time: "<<GET_TIMING(cluster)<<" s"<<std::endl;
 
+  rt.SetAlpha(alpha);
   rt.InitRuntime(scheduler, dcratio);
   rt.SetSchedulerCost(scheduler_cost);
   rt.Execute();
