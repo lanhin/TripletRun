@@ -154,6 +154,9 @@ int main(int argc, char *argv[])
       }else if(strcmp("DC", optarg) == 0 || strcmp("dc", optarg) == 0){
 	scheduler = triplet::DATACENTRIC;
 	std::cout<<"scheduler DATACENTRIC"<<std::endl;
+      }else if(strcmp("ADON", optarg) == 0 || strcmp("adon", optarg) == 0){
+	scheduler = triplet::ADON;
+	std::cout<<"scheduler ADON"<<std::endl;
       }else{
 	std::cout<<"Error: cannot identify scheduler "<<optarg<<std::endl;
 	exit(1);
