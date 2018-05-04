@@ -1698,7 +1698,7 @@ namespace triplet{
     scheduler_mean_cost = sc;
   }
 
-  /** Set alpha value of ADON and DONF2 policy.
+  /** Set alpha value of ADON and DONF2 policies.
    */
   void Runtime::SetAlpha(float alpha){
     assert(alpha >= ZERO_NEGATIVE);

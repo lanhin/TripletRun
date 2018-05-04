@@ -13,6 +13,8 @@ import sys
 import csv
 import os
 
+import trace_analysis
+
 errorfiles=list()
 
 if (len(sys.argv)) != 2:
@@ -20,14 +22,14 @@ if (len(sys.argv)) != 2:
     exit(1)
 
 def output(extractlist, fileout):
-    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency', 'dev used']
+    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency', 'dev used', 'unbalance issues']
     extractlist.insert(0, header)
     with open (fileout, "wb") as f:
         writer = csv.writer(f)
         writer.writerows(extractlist)
 
 def fileprocess(filein):
-    entry = ['']*13
+    entry = ['']*14
     devused = 0
     with open(filein, "rb") as source:
         startprocess = False
@@ -67,6 +69,7 @@ def fileprocess(filein):
     if entry[0] == '':
         print("file error:", filein)
         errorfiles.append(filein)
+    entry[13] = trace_analysis.loadbalanceprocess(filein)
     return entry
 
 def main():

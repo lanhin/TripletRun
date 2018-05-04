@@ -190,7 +190,7 @@ namespace triplet{
      */
     void SetSchedulerCost(float sc);
 
-    /** Set alpha value of ADON and DONF2 policy.
+    /** Set alpha value of ADON and DONF2 policies.
      */
     void SetAlpha(float alpha);
 
@@ -251,7 +251,7 @@ namespace triplet{
     float max_cpath_cc; // Record the critical path computatin cost summary
     float absCP; // The |CP| value used in device selection phase of CPOP policy
     float min_execution_time; // The min execution time of a task
-    float alpha_DON; // The alpha value of DONF2 and ADON policy
+    float alpha_DON; // The alpha value of DONF2 and ADON policies
 
     double graph_init_time;
     double cluster_init_time;

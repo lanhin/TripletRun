@@ -51,3 +51,6 @@ utils/opfiles
 
 # csv result files
 *.csv
+
+# python import file
+*.pyc
