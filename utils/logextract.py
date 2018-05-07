@@ -91,6 +91,9 @@ def main():
     if os.path.isfile(fileout):
         print("Output file already exists, remove it...")
         os.remove(fileout)
+    if os.path.isfile(errorfilelists):
+        print("Output error file already exists, remove it...")
+        os.remove(errorfilelists)
 
     extract = list()
     for fileinput in dirs:
