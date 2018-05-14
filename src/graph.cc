@@ -13,10 +13,12 @@ namespace triplet{
   // class Node
   Node::Node()
     :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1) {}
-  Node::Node(int id, float compDmd, float dataDmd){
+  Node::Node(int id, float compDmd, float dataDmd, float data_consume, float data_generate){
     id_ = id;
     computing_demand = compDmd;
     data_demand = dataDmd;
+    data_consume = data_consume;
+    data_generate = data_generate;
     rank_OCT = 0;
     rank_u_HSIP = -1;
     rank_u_HEFT = -1;
@@ -130,12 +132,24 @@ namespace triplet{
    */
   float Node::GetCompDmd(){
     return computing_demand;
-  }
+  }  
 
   /** Get data demand of the node.
    */
   float Node::GetDataDmd(){
     return data_demand;
+  }
+
+  /** Get data consume of the node.
+   */
+  float Node::GetDataConsume(){
+    return this->data_consume;
+  }
+
+  /** Get data generate of the node.
+   */
+  float Node::GetDataGenerate(){
+    return this->data_generate;
   }
 
   /** Get in-degree of the node:
@@ -320,17 +334,17 @@ namespace triplet{
       comDmd: computation demand
       dataDmd: data demand
   */
-  void Graph::AddNode(int id, float comDmd, float dataDmd){
+  void Graph::AddNode(int id, float comDmd, float dataDmd, float dataConsume, float dataGenerate){
     assert(id >= 0);
     assert(comDmd > 0.0);
     graphmap::iterator it;
     it = graph_.find(id);
     assert(it == graph_.end()); //Error: the node has already created
     
-    Node * node = new Node();
-    node->SetId(id);
-    node->SetCompDmd(comDmd);
-    node->SetDataDmd(dataDmd);
+    Node * node = new Node(id, comDmd, dataDmd, dataConsume, dataGenerate);
+    //node->SetId(id);
+    //node->SetCompDmd(comDmd);
+    //node->SetDataDmd(dataDmd);
     graph_[id] = node;
     numNode++;
     maxNode = std::max(maxNode, id);

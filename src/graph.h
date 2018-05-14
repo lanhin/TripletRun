@@ -14,7 +14,7 @@ namespace triplet{
   class Node{
   public:
     Node();
-    Node(int id, float compDmd, float dataDmd);
+    Node(int id, float compDmd, float dataDmd, float data_consume, float data_generate);
     ~Node();
 
     typedef std::set<int> nodeset;
@@ -81,6 +81,14 @@ namespace triplet{
     /** Get data demand of the node.
      */
     float GetDataDmd();
+
+    /** Get data consume of the node.
+     */
+    float GetDataConsume();
+
+    /** Get data generate of the node.
+     */
+    float GetDataGenerate();
 
     /** Get in-degree of the node:
 	the number of pred nodes.
@@ -187,6 +195,8 @@ namespace triplet{
     int occupied_device; // the occupied device id
     float computing_demand;
     float data_demand;
+    float data_consume;
+    float data_generate;
 
     /** mean_weight: average execution time of the node (on all devices)
 	Note: this is different from the computing_demand.
@@ -216,7 +226,7 @@ namespace triplet{
 	dataDmd: data demand
      */
     void AddNode(int id);
-    void AddNode(int id, float comDmd, float dataDmd);
+    void AddNode(int id, float comDmd, float dataDmd, float dataConsume = -1.0, float dataGenerate = -1.0);
 
     /** Add an edge from src to dst.
 	Also give the communication cost if need.

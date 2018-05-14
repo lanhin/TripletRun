@@ -105,13 +105,18 @@ namespace triplet{
       std::string id = root["nodes"][index].get("id", "-1").asString();
       std::string computeDemand = root["nodes"][index].get("comDmd", "-1.0").asString();
       std::string dataDemand = root["nodes"][index].get("dataDmd", "1.0").asString();
+      std::string dataConsume = root["nodes"][index].get("c", "-1.0").asString();
+      std::string dataGenerate = root["nodes"][index].get("g", "-1.0").asString();
       int id1 = std::stoi(id);
       float comDmd1 = std::stof(computeDemand, 0);
       float dataDmd1 = std::stof(dataDemand, 0);
+      float dataConsume1 = std::stof(dataConsume, 0);
+      float dataGenerate1 = std::stof(dataGenerate, 0);
+
       if (comDmd1 < 1){
 	comDmd1 = 0.1;
       }
-      global_graph.AddNode(id1, comDmd1, dataDmd1);
+      global_graph.AddNode(id1, comDmd1, dataDmd1, dataConsume1, dataGenerate1);
       idset.insert(id1);
 
 #if 0
@@ -1474,13 +1479,23 @@ namespace triplet{
     float total_data_output = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
-      total_data_output += std::max(input_nd->GetDataDmd(), (float)0.0);
+      if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
+	total_data_output += input_nd->GetDataGenerate();
+      }else{
+	total_data_output += std::max(input_nd->GetDataDmd(), (float)0.0);
+      }
     }
 
     float network_bandwidth = 0.0;
     float data_trans_ratio = 1.0;
-    if( total_data_output > nd.GetDataDmd() ){
-      data_trans_ratio = std::max(nd.GetDataDmd(), (float)0.0) / total_data_output;
+    if(nd.GetDataConsume() > ZERO_POSITIVE){
+      if( total_data_output > nd.GetDataConsume() ){
+	data_trans_ratio = std::max(nd.GetDataConsume(), (float)0.0) / total_data_output;
+      }
+    }else{
+      if( total_data_output > nd.GetDataDmd() ){
+	data_trans_ratio = std::max(nd.GetDataDmd(), (float)0.0) / total_data_output;
+      }
     }
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
@@ -1503,7 +1518,11 @@ namespace triplet{
 	ct = global_graph.GetComCost( *iter, nd.GetId() ) / network_bandwidth;
       }else{
 	// The edge doesn't have a weight
-	ct = std::max(input_nd->GetDataDmd(), (float)0.0) * data_trans_ratio / network_bandwidth;
+	if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
+	  ct = std::max(input_nd->GetDataGenerate(), (float)0.0) * data_trans_ratio / network_bandwidth;
+	}else{
+	  ct = std::max(input_nd->GetDataDmd(), (float)0.0) * data_trans_ratio / network_bandwidth;
+	}
       }
 
       data_transmission_time = std::max(ct, data_transmission_time);
