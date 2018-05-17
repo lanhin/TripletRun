@@ -157,6 +157,18 @@ namespace triplet{
     /** Get finished_tasks.
      */
     int GetTasks();
+    
+    /** Increase running_tasks (by 1).
+     */
+    void IncreaseLoad(int tasks = 1);
+
+    /** Decrease running_tasks (by 1).
+     */
+    void DecreaseLoad(int tasks = 1);
+
+    /** Return running_tasks.
+     */
+    int GetLoad();
 
   protected:
     int id_;
@@ -167,6 +179,7 @@ namespace triplet{
     DeviceStatus status;
     int location; //on which node does the device locate
     int finished_tasks; // The number of tasks finished by this device
+    int running_tasks; // The number of tasks still running on this device
     float execution_time; // The time that the device are calculating
     float data_trans_time; // The time that the device are waiting for input data transmission
     float available_time; // The time that this device will be ready for next task

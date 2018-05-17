@@ -142,6 +142,10 @@ namespace triplet{
     */
     Device* DevicePick(int ndId, SchedulePolicy sch = UNKNOWN);
 
+    /** Calculate mean load of all devices.
+     */
+    float CalcMeanLoad();
+
     /** Calculate the nearest time that a new decision can be made.
      */
     float CalcNearestFinishTime();
@@ -194,6 +198,10 @@ namespace triplet{
      */
     void SetAlpha(float alpha);
 
+    /** Set load balance threshold value.
+     */
+    void SetLoadBalanceThreshold(int threshold);
+
     /** Output the simlulation report.
      */
     void SimulationReport();
@@ -239,6 +247,7 @@ namespace triplet{
     int RRCounter; // Counter for RR policy
     int max_devId; // Max device id in the cluster
     int max_parallel; // Max parallelism
+    int load_balance_threshold; // Load balance task number threshold, 0 means no load balance policy
 
     float max_devCompute; // Max device compute power
     int max_computeDevId; // The device id that with the max compute power

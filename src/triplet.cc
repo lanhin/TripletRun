@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 
   int c;
   float dcratio = 1.0;
+  int lb_threshold = 0;
   float scheduler_cost = 0.0;
   float alpha = 0.5;
 
@@ -95,12 +96,13 @@ int main(int argc, char *argv[])
       {"graph", 1, 0, 'g'},
       {"cluster", 1, 0, 'c'},
       {"dcratio", 1, 0, 'd'},
+      {"loadbalance", 1, 0, 'l'},
       {"scheduler", 1, 0, 's'},
       {"scost", 1, 0, 't'},
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "a:c:d:g:hs:t:",
+    c = getopt_long(argc, argv, "a:c:d:g:hl:s:t:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -127,6 +129,10 @@ int main(int argc, char *argv[])
     case 'h':
       Usage();
       exit(0);
+      break;
+    case 'l':
+      assert(optarg);
+      lb_threshold = atoi(optarg);
       break;
     case 's':
       assert(optarg);
@@ -201,6 +207,7 @@ int main(int argc, char *argv[])
 
   rt.SetAlpha(alpha);
   rt.InitRuntime(scheduler, dcratio);
+  rt.SetLoadBalanceThreshold(lb_threshold);
   rt.SetSchedulerCost(scheduler_cost);
   rt.Execute();
 

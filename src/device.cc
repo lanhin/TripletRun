@@ -16,13 +16,14 @@ namespace triplet{
       status(UNAVAILABLE),
       location(-1),
       finished_tasks(0),
+      running_tasks(0),
       execution_time(0.0),
       data_trans_time(0.0),
       Allocated_RAM(0),
       available_time(0.0) {}
 
   Device::Device(int id, float compute, float RAM, float bw, int loc)
-    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0), available_time(0.0) {
+    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0), available_time(0.0) {
     status = FREE;}
 
   Device::~Device(){}
@@ -332,6 +333,28 @@ namespace triplet{
   int Device::GetTasks(){
     return this->finished_tasks;
   }
+
+  /** Increase running_tasks.
+   */
+  void Device::IncreaseLoad(int tasks){
+    assert(tasks > 0);
+    this->running_tasks += tasks;
+  }
+
+  /** Decrease running_tasks.
+   */
+  void Device::DecreaseLoad(int tasks){
+    assert(tasks > 0);
+    assert(tasks <= this->running_tasks);
+    this->running_tasks -= tasks;
+  }
+
+  /** Return running_tasks.
+   */
+  int Device::GetLoad(){
+    return this->running_tasks;
+  }
+
 
   // The Connections class
   Connections::Connections(){

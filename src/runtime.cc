@@ -33,6 +33,7 @@ namespace triplet{
     mean_computing_power = 0;
     DCRatio = 0;
     max_parallel = 0;
+    load_balance_threshold = 0;
     max_devCompute = 0.0;
     max_cpath_cc = 0.0;
     absCP = 0.0;
@@ -847,6 +848,9 @@ namespace triplet{
 	  // Set the finished_tasks properly
 	  TaihuLight[devId]->IncreaseTasks(1);
 
+	  // Decrease load of the corresponding device
+	  TaihuLight[devId]->DecreaseLoad(1);
+
 	  if(TaihuLight[devId]->GetAvaTime() <= global_timer && TaihuLight[devId]->IsBusy()){
 	    // Only set free the ones that are really free.
 	    TaihuLight[devId]->SetFree();
@@ -948,7 +952,6 @@ namespace triplet{
 	if(dev->GetId() == test_dev->GetId()){
 	  dev_hit_counter++;
 	}
-
 	/** If dev == NULL, re-insert the node into ready_queue,
 	    and then calculate nearest finish time.
 
@@ -979,6 +982,8 @@ namespace triplet{
 	}
 
 	nd->SetOccupied(dev->GetId());
+
+	dev->IncreaseLoad(1);
 
 	/** Note: since the scheduled tasks are ready tasks,
 	    global_timer + transmission_time is the EST of this task.
@@ -1285,10 +1290,18 @@ namespace triplet{
 	  pick the one with the min EFT.
        */
       float min_OEFT = -1;
+      float mean_load = CalcMeanLoad();
       // 1.Traverse all the devices
       for (auto& it: TaihuLight){
 	if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
 	  // The free memory of the device is too little, skip
+	  continue;
+	}
+#ifdef DEBUG
+	std::cout<<"lb_balance: "<<load_balance_threshold<<", mean load: "<<mean_load<<", dev load:"<<(it.second)->GetLoad()<<std::endl;
+#endif
+	if(this->load_balance_threshold && (it.second)->GetLoad() > std::max(mean_load, float(this->load_balance_threshold))){
+	  //std::cout<<"a load balance pick"<<std::endl;
 	  continue;
 	}
 
@@ -1433,6 +1446,18 @@ namespace triplet{
     }
 
     return dev;
+  }
+
+  /** Calculate mean load of all devices.
+   */
+  float Runtime::CalcMeanLoad(){
+    float meanLoad = 0.0;
+    int deviceNum = 1;
+    for (auto& it: TaihuLight){
+      meanLoad += ((it.second)->GetLoad() - meanLoad) / deviceNum;
+      deviceNum ++;
+    }
+    return meanLoad;
   }
 
   /** Calculate the nearest time that a new decision can be made.
@@ -1728,6 +1753,12 @@ namespace triplet{
 #endif
   }
 
+  /** Set load balance threshold value.
+   */
+  void Runtime::SetLoadBalanceThreshold(int threshold){
+    assert(threshold >= 0);
+    this->load_balance_threshold = threshold;
+  }
 
 
   /** Output SchedulePolicy as enum items.
