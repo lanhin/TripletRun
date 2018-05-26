@@ -34,6 +34,7 @@ namespace triplet{
     DCRatio = 0;
     max_parallel = 0;
     load_balance_threshold = 0;
+    load_time = -1;
     max_devCompute = 0.0;
     max_cpath_cc = 0.0;
     absCP = 0.0;

@@ -248,6 +248,7 @@ namespace triplet{
     int max_devId; // Max device id in the cluster
     int max_parallel; // Max parallelism
     int load_balance_threshold; // Load balance task number threshold, 0 means no load balance policy
+    float load_time; // The load balance time threshold
 
     float max_devCompute; // Max device compute power
     int max_computeDevId; // The device id that with the max compute power
