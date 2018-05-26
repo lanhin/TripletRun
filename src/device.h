@@ -173,7 +173,7 @@ namespace triplet{
   protected:
     int id_;
     float computing_power;
-    float RAM_size; /* TODO: just int? */
+    float RAM_size;
     float Allocated_RAM;  // number of RAM size in use
     float bandwidth;
     DeviceStatus status;

@@ -949,7 +949,7 @@ namespace triplet{
 	/** Test if DATACENTRIC could hit this pick.
 	 */
 	Device* test_dev = DevicePick(task_node_id, DATACENTRIC);
-	if(dev->GetId() == test_dev->GetId()){
+	if(dev != NULL && test_dev != NULL &&  dev->GetId() == test_dev->GetId()){
 	  dev_hit_counter++;
 	}
 	/** If dev == NULL, re-insert the node into ready_queue,
@@ -1301,9 +1301,16 @@ namespace triplet{
 	std::cout<<"lb_balance: "<<load_balance_threshold<<", mean load: "<<mean_load<<", dev load:"<<(it.second)->GetLoad()<<std::endl;
 #endif
 	if(this->load_balance_threshold && (it.second)->GetLoad() > std::max(mean_load, float(this->load_balance_threshold))){
-	  //std::cout<<"a load balance pick"<<std::endl;
+#ifdef DEBUG
+	  std::cout<<"a load balance pick"<<std::endl;
+#endif
 	  continue;
 	}
+
+	/*
+	if(this->load_time >= ZERO_POSITIVE && ((it.second)->GetAvaTime() - global_timer) >= this->load_time){
+	  continue;
+	  }*/
 
 	float w = nd->GetCompDmd() / (it.second)->GetCompPower();
 
@@ -1363,6 +1370,11 @@ namespace triplet{
 	  dev = it.second;
 	}
       }
+#if 0
+      if(dev != NULL){
+	std::cout<<"ld: "<<dev->GetLoad()<<" "<<mean_load<<" t: "<<(dev->GetAvaTime() - global_timer)<<std::endl;
+      }
+#endif
     }
       break;
 
@@ -1698,6 +1710,11 @@ namespace triplet{
       for (auto& it : ready_queue) {
 	std::cout<<"| Node "<<it<<", data demand:"<<global_graph.GetNode(it)->GetDataDmd()<<std::endl;
       }
+      /** 4. Execution queue nodes
+       */
+      for (auto& it : execution_queue) {
+	std::cout<<"| Node "<<it.first<<", finish time:"<<it.second<<std::endl;
+      }
       std::cout<< RED <<"******************"<< RESET <<std::endl;
     }
 
@@ -1808,17 +1825,19 @@ namespace triplet{
     std::cout<<" SLR: "<<(this->global_timer/this->max_cpath_cc)<<std::endl;
 
     int devId, tasks;
-    float occupyTime, dataTransTime;
+    float occupyTime, dataTransTime, totalRAM, freeRAM;
     Cluster::iterator it = TaihuLight.begin();
     for(; it != TaihuLight.end(); it++){
       devId = it->first;
       occupyTime = (it->second)->GetRunTime();
       dataTransTime = (it->second)->GetTransTime();
       tasks = (it->second)->GetTasks();
+      totalRAM = (it->second)->GetRAM();
+      freeRAM = (it->second)->GetFreeRAM();
       assert(devId >= 0);
       assert(occupyTime >= 0.0);
 
-      std::cout<<" Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<std::endl;
+      std::cout<<" Device id:"<<devId<<"  occupied time:"<<occupyTime<<"  proportion:"<<occupyTime/global_timer<<"  data transfer time:"<<dataTransTime<<", finished number of tasks:"<<tasks<<", total RAM:"<<totalRAM<<", free RAM:"<<freeRAM<<std::endl;
     }
     std::cout<<"Total tasks:"<<this->task_total<<"\n\tDONF hit times:"<<this->task_hit_counter<<" propertion:"<<float(this->task_hit_counter)/this->task_total<<"\n\tDatacentric hit times:"<<this->dev_hit_counter<<" propertion:"<<float(this->dev_hit_counter)/this->task_total<<"\n\tDatacentric valid times:"<<this->dc_valid_counter<<" propertion:"<<float(this->dc_valid_counter)/this->task_total<<std::endl;
 
