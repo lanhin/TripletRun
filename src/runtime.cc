@@ -861,7 +861,7 @@ namespace triplet{
 	  // TODO: do we really need this? I think it can be removed
 	  running_history[nd->GetId()] = devId;
 
-	  // update pending list and ready queue
+	  // update pending list and ready queue and success nodes' level
 	  std::set<int>::iterator ndit;
 	  for (ndit = nd->output.begin(); ndit != nd->output.end(); ndit ++){
 	    int pendingNum = pending_list[*ndit];
@@ -880,8 +880,8 @@ namespace triplet{
 
 	      //Record the current time
 	      global_graph.GetNode(*ndit)->SetWaitTime(this->global_timer);
-
 	    }
+	    global_graph.GetNode(*ndit)->SetLevel(nd->GetLevel() +1);
 	  }
 
 	  // erase the task from execution_queue

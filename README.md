@@ -50,3 +50,5 @@ make clean
 - (2018-01-12) The PEFT scheduling policy has been roughly implementated.
 - (2018-01-14) Combined googletest and add "test" branch.
 - (2018-01-29) HEFT policy.
+- (2018-04) SJF, FCFS, RR policies.
+- (2018-05) Load balance.

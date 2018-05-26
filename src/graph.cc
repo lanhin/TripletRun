@@ -12,9 +12,10 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1) {}
+    :id_(-1), level(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1) {}
   Node::Node(int id, float compDmd, float dataDmd, float data_consume, float data_generate){
     id_ = id;
+    level = -1;
     computing_demand = compDmd;
     data_demand = dataDmd;
     data_consume = data_consume;
@@ -290,6 +291,23 @@ namespace triplet{
    */
   float Node::GetRank_ADON(){
     return this->rank_ADON;
+  }
+
+  /** Get the node's level
+   */
+  int Node::GetLevel(){
+    return this->level;
+  }
+
+  /** Set the node's level
+   */
+  void Node::SetLevel(int lvl){
+    assert(lvl >= 0);
+    if(this->level < 0){//init state
+      this->level = lvl;
+    }else{
+      this->level = std::min(lvl, this->level);
+    }
   }
 
 

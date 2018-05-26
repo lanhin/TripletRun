@@ -181,6 +181,13 @@ namespace triplet{
      */
     float GetRank_ADON();
 
+    /** Get the node's level
+     */
+    int GetLevel();
+
+    /** Set the node's level
+     */
+    void SetLevel(int lvl);
 
     /** The id set of the succ nodes.
      */
@@ -193,6 +200,7 @@ namespace triplet{
   protected:
     int id_;
     int occupied_device; // the occupied device id
+    int level; // The min levels away from source node
     float computing_demand;
     float data_demand;
     float data_consume;

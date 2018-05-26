@@ -96,9 +96,9 @@ int main(int argc, char *argv[])
       {"graph", 1, 0, 'g'},
       {"cluster", 1, 0, 'c'},
       {"dcratio", 1, 0, 'd'},
-      {"loadbalance", 1, 0, 'l'},
+      {"loadbalance", 1, 0, 'l'}, // Load balance threshold task number
       {"scheduler", 1, 0, 's'},
-      {"scost", 1, 0, 't'},
+      {"scost", 1, 0, 't'}, // Scheduler cost
       {0, 0, 0, 0}
     };
 
