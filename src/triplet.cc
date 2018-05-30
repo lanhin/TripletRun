@@ -57,12 +57,18 @@ void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
 void Usage(){
   std::cout<<"Usage: ./triplet [options]"<<std::endl;
   std::cout<<"\tOptions:"<<std::endl;
-  std::cout<<"\t-h, --help: output this usage message."<<std::endl;
-  std::cout<<"\t-g, --graph <graphfile>: set graph file."<<std::endl;
+  std::cout<<"\t-a, --alpha <value>: alpha for DONF2 and ADON policies."<<std::endl;
   std::cout<<"\t-c, --cluster <clusterfile>: set cluster file."<<std::endl;
-  std::cout<<"\t-s, --scheduler <policy>: set schduling policy."<<std::endl<<std::endl;
+  std::cout<<"\t-d, --dcratio <value>: Data-Centric ratio value."<<std::endl;
+  std::cout<<"\t-f, --devfull <value>: dev_full_threshold"<<std::endl;
+  std::cout<<"\t-g, --graph <graphfile>: set graph file."<<std::endl;
+  std::cout<<"\t-h, --help: output this usage message."<<std::endl;
+  std::cout<<"\t-l, --loadbalance <value>: load balance threshold task number"<<std::endl;
+  std::cout<<"\t-m, --memfull <value>: mem_full_threshold"<<std::endl;
+  std::cout<<"\t-s, --scheduler <policy>: set schduling policy."<<std::endl;
+  std::cout<<"\t-t, --scost <value>: Scheduler cost"<<std::endl<<std::endl;
 
-  std::cout<<"\tScheduler supported: RR, FCFS, SJF, PEFT, HSIP, DONF"<<std::endl;
+  std::cout<<"\tScheduler supported: RR, FCFS, SJF, PEFT, HSIP, DONF, DONF2, DONFM, HEFT, CPOP, DATACENTRIC, ADON"<<std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -86,6 +92,8 @@ int main(int argc, char *argv[])
   int lb_threshold = 0;
   float scheduler_cost = 0.0;
   float alpha = 0.5;
+  float memfull_t = 0.9;
+  float devfull_t = 0.2;
 
   while (1) {
     int this_option_optind = optind ? optind : 1;
@@ -99,10 +107,12 @@ int main(int argc, char *argv[])
       {"loadbalance", 1, 0, 'l'}, // Load balance threshold task number
       {"scheduler", 1, 0, 's'},
       {"scost", 1, 0, 't'}, // Scheduler cost
+      {"memfull", 1, 0, 'm'}, //mem_full_threshold
+      {"devfull", 1, 0, 'f'}, //dev_full_threshold
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "a:c:d:g:hl:s:t:",
+    c = getopt_long(argc, argv, "a:c:d:f:g:hl:m:s:t:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -121,6 +131,10 @@ int main(int argc, char *argv[])
       assert(optarg);
       dcratio = atof(optarg);
       break;
+    case 'f':
+      assert(optarg);
+      devfull_t = atof(optarg);
+      break;
     case 'g':
       assert(optarg);
       graphfile = optarg;
@@ -133,6 +147,10 @@ int main(int argc, char *argv[])
     case 'l':
       assert(optarg);
       lb_threshold = atoi(optarg);
+      break;
+    case 'm':
+      assert(optarg);
+      memfull_t = atof(optarg);
       break;
     case 's':
       assert(optarg);
@@ -157,6 +175,9 @@ int main(int argc, char *argv[])
       }else if(strcmp("DONF2", optarg) == 0 || strcmp("donf2", optarg) == 0){
 	scheduler = triplet::DONF2;
 	std::cout<<"scheduler DONF2"<<std::endl;
+      }else if(strcmp("DONFM", optarg) == 0 || strcmp("donfm", optarg) == 0){
+	scheduler = triplet::DONFM;
+	std::cout<<"scheduler DONFM"<<std::endl;
       }else if(strcmp("HEFT", optarg) == 0 || strcmp("heft", optarg) == 0){
 	scheduler = triplet::HEFT;
 	std::cout<<"scheduler HEFT"<<std::endl;
@@ -206,6 +227,8 @@ int main(int argc, char *argv[])
   std::cout<<" Cluster init time: "<<GET_TIMING(cluster)<<" s"<<std::endl;
 
   rt.SetAlpha(alpha);
+  rt.SetMemFull(memfull_t);
+  rt.SetDevFull(devfull_t);
   rt.InitRuntime(scheduler, dcratio);
   rt.SetLoadBalanceThreshold(lb_threshold);
   rt.SetSchedulerCost(scheduler_cost);

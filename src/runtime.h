@@ -28,6 +28,7 @@ namespace triplet{
     DONF, // Degree of node first
     DONF2, // 2-degree degree of node first
     ADON, // All-level degree of node
+    DONFM, // min memory
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
@@ -202,6 +203,14 @@ namespace triplet{
      */
     void SetLoadBalanceThreshold(int threshold);
 
+    /** Set mem_full_threshold
+     */
+    void SetMemFull(float full);
+
+    /** Set dev_full_threshold
+     */
+    void SetDevFull(float full);
+
     /** Output the simlulation report.
      */
     void SimulationReport();
@@ -247,8 +256,12 @@ namespace triplet{
     int RRCounter; // Counter for RR policy
     int max_devId; // Max device id in the cluster
     int max_parallel; // Max parallelism
+    int mem_full_dev; // Number of devices whoes RAM is (nearly) full
     int load_balance_threshold; // Load balance task number threshold, 0 means no load balance policy
     float load_time; // The load balance time threshold
+
+    float mem_full_threshold; // RAM full threshold for a single device
+    float dev_full_threshold; // Overall device memory full mode threshold
 
     float max_devCompute; // Max device compute power
     int max_computeDevId; // The device id that with the max compute power
@@ -262,6 +275,7 @@ namespace triplet{
     float absCP; // The |CP| value used in device selection phase of CPOP policy
     float min_execution_time; // The min execution time of a task
     float alpha_DON; // The alpha value of DONF2 and ADON policies
+    float min_free_mem;
 
     double graph_init_time;
     double cluster_init_time;

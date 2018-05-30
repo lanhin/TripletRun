@@ -170,7 +170,16 @@ namespace triplet{
      */
     int GetLoad();
 
+    /** Set mem_full as true or false.
+     */
+    void SetFull(bool full);
+
+    /** Check if RAM is full.
+     */
+    bool IsFull();
+
   protected:
+    bool mem_full; // RAM full flag
     int id_;
     float computing_power;
     float RAM_size;

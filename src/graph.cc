@@ -12,8 +12,9 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :id_(-1), level(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1) {}
+    :status(INIT), id_(-1), level(-1), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1) {}
   Node::Node(int id, float compDmd, float dataDmd, float data_consume, float data_generate){
+    status = INIT;
     id_ = id;
     level = -1;
     computing_demand = compDmd;
@@ -308,6 +309,26 @@ namespace triplet{
     }else{
       this->level = std::min(lvl, this->level);
     }
+  }
+
+  /** Set node status.
+   */
+  void Node::SetStatus(NodeStatus st){
+    this->status = st;
+  }
+
+  /** Get node status.
+      Only for debug at present.
+   */
+  Node::NodeStatus Node::GetStatus(){
+    return this->status;
+  }
+
+  /** Check if the node is in the ready queue.
+   */
+  bool Node::IsReady(){
+    //std::cout<<"Status:"<<this->status<<" is ready:"<<(this->status == READY)<<std::endl;
+    return (this->status == READY);
   }
 
 

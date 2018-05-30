@@ -24,6 +24,7 @@ namespace triplet{
     scheduler_mean_cost = 0.0;
     deviceNum = 0;
     deviceInUse = 0;
+    mem_full_dev = 0;
     OCT = NULL;
     max_devId = -1;
     task_total = 0;
@@ -35,11 +36,14 @@ namespace triplet{
     max_parallel = 0;
     load_balance_threshold = 0;
     load_time = -1;
+    mem_full_threshold = 0.9;
+    dev_full_threshold = 0.2;
     max_devCompute = 0.0;
     max_cpath_cc = 0.0;
     absCP = 0.0;
     min_execution_time = 0.0;
     alpha_DON = 0.5;
+    min_free_mem = -1;
 
     graph_init_time = 0.0;
     cluster_init_time = 0.0;
@@ -372,7 +376,7 @@ namespace triplet{
       this->absCP = global_graph.CalcPriorityCPOP();
     }
 
-    if (Scheduler == DONF || Scheduler == DONF2 || Scheduler == ADON){
+    if (Scheduler == DONF || Scheduler == DONF2 || Scheduler == ADON || Scheduler == DONFM){
       DECLARE_TIMING(NDON);
       log_start("NDON calculation...");
       START_TIMING(NDON);
@@ -401,6 +405,7 @@ namespace triplet{
 
       if (pend == 0){ //add it into ready_queue
 	ready_queue.push_back(*iter);
+	global_graph.GetNode(*iter)->SetStatus(Node::READY); // Set node's status
 
 	// Calculate Cpath computatin cost
 	global_graph.CalcCpathCC(*iter, this->max_devCompute, this->min_execution_time);
@@ -819,6 +824,13 @@ namespace triplet{
 	  if ( (blk_pointer->DecRefers()) <= 0 ){ // do the free
 	    blk_pointer->DoFree(TaihuLight);
 
+	    //Check if need to set mem_full_dev
+	    Device* dv = TaihuLight[blk_pointer->DeviceLocation()];
+	    if((dv->GetFreeRAM() / dv->GetRAM() > this->mem_full_threshold) && dv->IsFull()){
+	      dv->SetFull(false);
+	      this->mem_full_dev--;
+	    }
+
 	    //Remove the block entry from the BlockMap and block_free_queue
 	    delete BlocksMap[it.first];
 	    BlocksMap.erase(it.first);
@@ -843,9 +855,7 @@ namespace triplet{
 	  this->max_cpath_cc = std::max(this->max_cpath_cc, nd->GetCpathCC());
 
 	  int devId = nd->GetOccupied();
-#if 0
-	  std::cout<<"Node "<<it->first<<" finished execution at "<<global_timer<< ". It used device "<<devId<<std::endl;
-#endif
+
 	  // Set the finished_tasks properly
 	  TaihuLight[devId]->IncreaseTasks(1);
 
@@ -875,6 +885,7 @@ namespace triplet{
 
 	    if (pendingNum == 0){
 	      ready_queue.push_back(*ndit);
+	      global_graph.GetNode(*ndit)->SetStatus(Node::READY); // Set node's status
 
 	      // Calculate Cpath computatin cost
 	      global_graph.CalcCpathCC(*ndit, this->max_devCompute, this->min_execution_time);
@@ -887,6 +898,12 @@ namespace triplet{
 
 	  // erase the task from execution_queue
 	  execution_queue.erase(it++);
+	  nd->SetStatus(Node::FINISHED);
+
+#if 0
+	  std::cout<<"Node "<<it->first<<" finished execution at "<<global_timer<< ". It used device "<<devId<<", status:"<<nd->GetStatus()<<std::endl;
+#endif
+
 
 #if 0
 	  // Output the execution_queue to check its contents
@@ -904,6 +921,13 @@ namespace triplet{
 	  process a new task from it and update global_timer, deviceInUse
        */
       while ( (!ready_queue.empty()) && global_timer >= (scheduler_ava_time + ZERO_NEGATIVE) ) {
+
+	/** For debug: check the task status in ready_queue and execution_queue
+	 */
+	for(auto& ite: ready_queue){
+	  assert(global_graph.GetNode(ite)->IsReady());
+	}
+
 	// TODO: 1. consider schedule time here;
 
 	// 2.0 Update max_parallel value
@@ -940,6 +964,7 @@ namespace triplet{
 	if ( ready_queue.size() == 1 && Scheduler == HSIP && nd->GetInNum() == 0){
 	  //Entry task duplication
 	  EntryTaskDuplication(nd);
+	  nd->SetStatus(Node::RUNNING);
 	  continue;
 	}
 	// Entry task duplication policy doesn't need this.
@@ -965,6 +990,9 @@ namespace triplet{
 	//assert(dev != NULL);
 	if ( dev == NULL ){
 	  if ( DeadLoopDetect() ){
+	    this->task_pick_time = GET_TOTAL_TIMING(taskpick);
+	    this->device_pick_time = GET_TOTAL_TIMING(devicepick);
+
 	    SimulationReport();
 	    log_error("Execution interrupted, for dead loop detected.");
 	    exit(1);
@@ -983,6 +1011,7 @@ namespace triplet{
 	}
 
 	nd->SetOccupied(dev->GetId());
+	nd->SetStatus(Node::RUNNING);
 
 	dev->IncreaseLoad(1);
 
@@ -1002,6 +1031,21 @@ namespace triplet{
 	block->DoAlloc(TaihuLight);
 	// TODO: check if the block id already exists, which is illegal
 	BlocksMap[block_id] = block;
+
+	//Check if need to set mem_full_dev
+	if((dev->GetFreeRAM() / dev->GetRAM() <= this->mem_full_threshold) && !dev->IsFull()){
+	  dev->SetFull(true);
+	  this->mem_full_dev++;
+	}
+
+	//Calc min_free_mem
+	float sum_free_RAM = 0;
+	for (auto& it: TaihuLight){
+	  sum_free_RAM += (it.second)->GetFreeRAM();
+	}
+	if(this->min_free_mem < 0 || this->min_free_mem > sum_free_RAM){
+	  this->min_free_mem = sum_free_RAM;
+	}
 
 	for (std::set<int>::iterator iter = nd->input.begin(); iter != nd->input.end(); iter ++){
 	  Node* input_nd = global_graph.GetNode(*iter);
@@ -1054,7 +1098,7 @@ namespace triplet{
 #if 1
 	//Debug
 	std::cout<<"Node "<<task_node_id<<" on "<<dev->GetId();
-	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<std::endl;
+	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status:"<<nd->GetStatus()<<std::endl;
 #endif
 #if 0
 	std::cout<<"Device ava time updated to: "<<dev->GetAvaTime()<<"s, Node AFT updated to: "<<nd->GetAFT()<<std::endl;
@@ -1064,6 +1108,17 @@ namespace triplet{
       /** 3. Update global_timer to the nearest finish time
        */
       global_timer = CalcNearestFinishTime();
+
+      /** For debug: check the task status in ready_queue and execution_queue
+       */
+      for(auto& ite: ready_queue){
+	assert(global_graph.GetNode(ite)->IsReady());
+      }
+
+      for(auto& ite: execution_queue){
+	assert(global_graph.GetNode(ite.first)->GetStatus() == Node::RUNNING);
+      }
+
     }
 
     this->task_pick_time = GET_TOTAL_TIMING(taskpick);
@@ -1164,21 +1219,72 @@ namespace triplet{
     case DATACENTRIC:
     case DONF:
     case DONF2:
-    case ADON:{
-      float degree, maxOutDegree = -1;
-      std::vector<int>::iterator iter = ready_queue.begin();
-      for (; iter != ready_queue.end(); iter++){
-	Node* nd = global_graph.GetNode(*iter);
-	if( Scheduler == ADON ){ // ADON
-	  degree = nd->GetRank_ADON();
-	}else if( Scheduler == DONF2 ){ // DONF2
-	  degree = NDON(nd, 2);
-	}else{ // DC, DONF
-	  degree = NDON(nd);
+    case ADON:
+    case DONFM:{
+      if(InnerScheduler == DONFM){//this->mem_full_dev / this->deviceNum >= this->dev_full_threshold){
+	//RAM full pick
+	/*
+	int min_level = -1;
+	std::vector<int>::iterator iter = ready_queue.begin();
+	for (; iter != ready_queue.end(); iter++){
+	  Node* nd = global_graph.GetNode(*iter);
+	  if(min_level < 0 || min_level > nd->GetLevel()){
+	    min_level = nd->GetLevel();
+	    taskIdx = *iter;
+	  }
+	  }*/
+	//std::cout<<"RAM full pick."<<std::endl;
+	//Pick a mem block (also a node), on a full device and min dependencies
+	int min_deps = -1;
+	int mem_block_id = -1;
+	for (auto& it:BlocksMap) {
+	  Device* dv = TaihuLight[(it.second)->DeviceLocation()];
+	  if(dv->IsFull() && (min_deps < 0 || min_deps > (it.second)->GetRefers())){
+	    int readynum = 0;
+	    Node* nd_pointer = global_graph.GetNode(it.first);
+	    for(auto& innerit : nd_pointer->output){
+	      if(global_graph.GetNode(innerit)->IsReady()){
+		readynum ++;
+	      }
+	    }
+	    if(readynum > 0){
+	      min_deps = (it.second)->GetRefers();
+	      mem_block_id = it.first;
+	    }
+	  }
 	}
-	if (maxOutDegree < degree){
-	  maxOutDegree = degree;
-	  taskIdx = *iter;
+	//assert(mem_block_id >= 0);
+	if(mem_block_id >= 0){
+	  //traverse the ready queue, pick a task which is the seccess nodes of the picked node
+	  Node* nd_pointer = global_graph.GetNode(mem_block_id);
+	  std::vector<int>::iterator iter = ready_queue.begin();
+	  for (; iter != ready_queue.end(); iter++){
+	    if(nd_pointer->output.find(*iter) != nd_pointer->output.end()){//it's a success node
+	      taskIdx = *iter;
+	      break;
+	    }
+	  }
+	}
+	if(taskIdx < 0){//did not find a good task
+	  std::cout<<"RAM full pick: did not find a good task!"<<std::endl;
+	  taskIdx = ready_queue.front();
+	}
+      }else{
+	float degree, maxOutDegree = -1;
+	std::vector<int>::iterator iter = ready_queue.begin();
+	for (; iter != ready_queue.end(); iter++){
+	  Node* nd = global_graph.GetNode(*iter);
+	  if( Scheduler == ADON ){ // ADON
+	    degree = nd->GetRank_ADON();
+	  }else if( Scheduler == DONF2 ){ // DONF2
+	    degree = NDON(nd, 2);
+	  }else{ // DC, DONF
+	    degree = NDON(nd);
+	  }
+	  if (maxOutDegree < degree){
+	    maxOutDegree = degree;
+	    taskIdx = *iter;
+	  }
 	}
       }
     }
@@ -1271,6 +1377,7 @@ namespace triplet{
     case DONF:
     case DONF2:
     case ADON:
+    case DONFM:
     case HEFT:
     case CPOP:
     case HSIP:
@@ -1778,6 +1885,20 @@ namespace triplet{
     this->load_balance_threshold = threshold;
   }
 
+  /** Set mem_full_threshold
+   */
+  void Runtime::SetMemFull(float full){
+    assert(full > ZERO_POSITIVE && full < 1.0 - ZERO_POSITIVE);
+    this->mem_full_threshold = full;
+    std::cout<<"Set mem full: "<<this->mem_full_threshold<<std::endl;
+  }
+
+  /** Set dev_full_threshold
+   */
+  void Runtime::SetDevFull(float full){
+    assert(full > ZERO_POSITIVE && full < 1.0 - ZERO_POSITIVE);
+    this->dev_full_threshold = full;
+  }
 
   /** Output SchedulePolicy as enum items.
    */
@@ -1797,6 +1918,7 @@ namespace triplet{
       INSERT_ELEMENT(DONF);
       INSERT_ELEMENT(DONF2);
       INSERT_ELEMENT(ADON);
+      INSERT_ELEMENT(DONFM);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT
@@ -1814,6 +1936,8 @@ namespace triplet{
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
     std::cout<<" Scheduling Policy: "<<Scheduler<<std::endl;
     std::cout<<" DC Ratio: "<<DCRatio<<std::endl;
+    std::cout<<" Mem full threshold: "<<mem_full_threshold<<std::endl;
+    std::cout<<" Dev full threshold: "<<dev_full_threshold<<std::endl;
     std::cout<<" Total nodes: "<<task_total<<std::endl;
     std::cout<<" Global timer: "<<global_timer<<std::endl;
     std::cout<<" Max parallelism: "<<this->max_parallel<<std::endl;
@@ -1824,6 +1948,7 @@ namespace triplet{
     std::cout<<" Speedup: "<<speedup<<std::endl;
     std::cout<<" Efficiency: "<<speedup / this->deviceNum<<std::endl;
     std::cout<<" SLR: "<<(this->global_timer/this->max_cpath_cc)<<std::endl;
+    std::cout<<" Min free RAM size: "<<this->min_free_mem<<std::endl;
 
     int devId, tasks;
     float occupyTime, dataTransTime, totalRAM, freeRAM;

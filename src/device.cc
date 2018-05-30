@@ -14,6 +14,7 @@ namespace triplet{
   Device::Device()
     : id_(-1),
       status(UNAVAILABLE),
+      mem_full(false),
       location(-1),
       finished_tasks(0),
       running_tasks(0),
@@ -23,7 +24,7 @@ namespace triplet{
       available_time(0.0) {}
 
   Device::Device(int id, float compute, float RAM, float bw, int loc)
-    : id_(id),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0), available_time(0.0) {
+    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0), available_time(0.0) {
     status = FREE;}
 
   Device::~Device(){}
@@ -354,6 +355,19 @@ namespace triplet{
   int Device::GetLoad(){
     return this->running_tasks;
   }
+
+  /** Set mem_full as true or false.
+   */
+  void Device::SetFull(bool full){
+    this->mem_full = full;
+  }
+
+  /** Check if RAM is full.
+   */
+  bool Device::IsFull(){
+    return this->mem_full;
+  }
+
 
 
   // The Connections class

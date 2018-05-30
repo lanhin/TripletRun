@@ -17,6 +17,13 @@ namespace triplet{
     Node(int id, float compDmd, float dataDmd, float data_consume, float data_generate);
     ~Node();
 
+    enum NodeStatus {
+      INIT = 1,
+      READY,
+      RUNNING,
+      FINISHED
+    };
+
     typedef std::set<int> nodeset;
 
     /** Set the id of the node.
@@ -189,6 +196,18 @@ namespace triplet{
      */
     void SetLevel(int lvl);
 
+    /** Set node status.
+     */
+    void SetStatus(NodeStatus st);
+
+    /** Get node status.
+     */
+    NodeStatus GetStatus();
+
+    /** Check if the node is in the ready queue.
+     */
+    bool IsReady();
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -198,6 +217,7 @@ namespace triplet{
     nodeset input;
     
   protected:
+    NodeStatus status; //INIT, READY, RUNNING and FINISHED
     int id_;
     int occupied_device; // the occupied device id
     int level; // The min levels away from source node
