@@ -1387,6 +1387,14 @@ namespace triplet{
       float dv = nd->GetPriorityCPOP() - this->absCP;
       if(InnerScheduler == CPOP && dv >= ZERO_NEGATIVE && dv <= ZERO_POSITIVE){
 	dev = TaihuLight[this->max_computeDevId];
+	if( (nd->GetDataDmd()) > dev->GetFreeRAM() + ZERO_POSITIVE ){
+	  for (auto& it: TaihuLight){
+	    if((nd->GetDataDmd()) < (it.second)->GetFreeRAM() + ZERO_NEGATIVE){
+	      dev = it.second;
+	      break;
+	    }
+	  }
+	}
 
 #ifdef DEBUG
 	std::cout<<"[Info] Node "<<ndId<<" is a CP task, so pick device "<<this->max_computeDevId<<std::endl;
