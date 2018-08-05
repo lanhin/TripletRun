@@ -1104,7 +1104,7 @@ namespace triplet{
 #if 1
 	//Debug
 	std::cout<<"Node "<<task_node_id<<" on "<<dev->GetId();
-	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status:"<<nd->GetStatus()<<std::endl;
+	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status:"<<nd->GetStatus()<<", wait time:"<<nd->GetWaitTime()<<std::endl;
 #endif
 #if 0
 	std::cout<<"Device ava time updated to: "<<dev->GetAvaTime()<<"s, Node AFT updated to: "<<nd->GetAFT()<<std::endl;
@@ -1659,7 +1659,7 @@ namespace triplet{
     }
 
     //3. Walk through all the input nodes of nd, and calc the transmission time
-    float network_bandwidth = 0.0;
+    std::map<int, float> TransSize;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
       int input_dev_id = input_nd->GetOccupied();
@@ -1669,6 +1669,29 @@ namespace triplet{
       if (input_dev_id == dev.GetId() || (input_nd->GetInNum() == 0 && this->ETD)){
 	continue;
       }
+
+      // Calculate the total transmission data size from input_dev_id to dev
+      if(TransSize.find(input_dev_id) == TransSize.end()){
+	// There's not an entry, create one
+	TransSize[input_dev_id] = 0.0;
+      }
+      if ( (global_graph.GetComCost( *iter, nd.GetId() )) >= 0 ) {
+	// The edge has a weight
+	TransSize[input_dev_id] += global_graph.GetComCost( *iter, nd.GetId() );
+      }else{
+	// The edge doesn't have a weight
+	if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
+	  TransSize[input_dev_id] += std::max(input_nd->GetDataGenerate(), (float)0.0) * data_trans_ratio;
+	}else{
+	  TransSize[input_dev_id] += std::max(input_nd->GetDataDmd(), (float)0.0) * data_trans_ratio;
+	}
+      }
+    }
+
+    float network_bandwidth = 0.0;
+    for(auto& dataSz : TransSize){
+      int input_dev_id = dataSz.first;
+      float transmission_size = dataSz.second;
 
       // The quatity of time from now to the link avaliable time
       float ava_time = 0.0;
@@ -1681,18 +1704,7 @@ namespace triplet{
       }
 
       float ct; // Communication time
-      if ( (global_graph.GetComCost( *iter, nd.GetId() )) >= 0 ) {
-	// The edge has a weight
-	ct = global_graph.GetComCost( *iter, nd.GetId() ) / network_bandwidth;
-      }else{
-	// The edge doesn't have a weight
-	if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
-	  ct = std::max(input_nd->GetDataGenerate(), (float)0.0) * data_trans_ratio / network_bandwidth;
-	}else{
-	  ct = std::max(input_nd->GetDataDmd(), (float)0.0) * data_trans_ratio / network_bandwidth;
-	}
-      }
-
+      ct = transmission_size / network_bandwidth;
       ct = std::max(ct, this->min_transmission_time);
 
       if(withConflicts){
@@ -1708,7 +1720,6 @@ namespace triplet{
 	}else{//The devices are on the same node.
 	  TaihuLightNetwork.IncConAvaTime(dev.GetId(), input_dev_id, ct, this->global_timer);
 	}
-
       }
     }
 
