@@ -82,7 +82,7 @@ TEST(RuntimeTest, MeanWaitTime){
   EXPECT_FLOAT_EQ(gr.GetNode(1)->GetWaitTime(), 0);
   EXPECT_FLOAT_EQ(gr.GetNode(2)->GetWaitTime(), 0.9375);
   EXPECT_FLOAT_EQ(gr.GetNode(3)->GetWaitTime(), 0.625);
-  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetWaitTime(), 0.3125);
+  EXPECT_FLOAT_EQ(gr.GetNode(4)->GetWaitTime(), 0.5);
   EXPECT_FLOAT_EQ(gr.GetNode(5)->GetWaitTime(), 0.625);
   EXPECT_FLOAT_EQ(gr.GetNode(8)->GetWaitTime(), 0.3125);
 
@@ -162,4 +162,17 @@ TEST(RuntimeTest, ADONRank){
   EXPECT_FLOAT_EQ(gr.GetNode(8)->GetRank_ADON(), 0);
 
   rt.Execute();
+}
+
+TEST(RuntimeTest, CommunicationConflicts){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test.json");
+  rt.InitCluster("cluster_test2.json");
+  rt.InitRuntime(triplet::RR);
+
+  rt.Execute();
+
+  triplet::Connections mellanox = rt.GetConnections();
+  EXPECT_FLOAT_EQ(mellanox.GetConAvaTime(0, 1), 5);
+  EXPECT_FLOAT_EQ(mellanox.GetConAvaTime(0, 1, true), 5.375);
 }

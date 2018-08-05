@@ -152,9 +152,11 @@ namespace triplet{
     float CalcNearestFinishTime();
 
     /** Calculate the data transmission time if we put nd on dev,
-	return the result as a float.
+	withConflicts: consider the 
+	setAvaTime:
+	Return the result as a float.
      */
-    float CalcTransmissionTime(Node nd, Device dev);
+    float CalcTransmissionTime(Node nd, Device dev, bool withConflicts=false, bool setAvaTime=false);
 
     /** Calculate the execution time if we put nd on dev,
 	return the result as a float.
@@ -274,6 +276,7 @@ namespace triplet{
     float max_cpath_cc; // Record the critical path computatin cost summary
     float absCP; // The |CP| value used in device selection phase of CPOP policy
     float min_execution_time; // The min execution time of a task
+    float min_transmission_time; // The min transmission time of tasks
     float alpha_DON; // The alpha value of DONF2 and ADON policies
     float min_free_mem;
 

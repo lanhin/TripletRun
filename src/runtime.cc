@@ -42,6 +42,7 @@ namespace triplet{
     max_cpath_cc = 0.0;
     absCP = 0.0;
     min_execution_time = 0.0;
+    min_transmission_time = 0.0;
     alpha_DON = 0.5;
     min_free_mem = -1;
 
@@ -126,7 +127,7 @@ namespace triplet{
       idset.insert(id1);
 
 #if 0
-      std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<std::endl;
+      std::cout<<"Node "<<id1<<", com demand: "<<comDmd1<<", data demand: "<<dataDmd1<<", data consume: "<<dataConsume1<<", data generate: "<<dataGenerate1<<std::endl;
 #endif
     }
 
@@ -320,8 +321,9 @@ namespace triplet{
   void Runtime::InitRuntime(SchedulePolicy sch, float dc){
     log_start("Runtime initialization...");
 
-    // Init min_execution_time
+    // Init min_execution_time and min_transmission_time
     this->min_execution_time = 0.01;
+    this->min_transmission_time = 0.01;
 
     std::cout<<" Scheduler: "<<sch<<std::endl;
     std::cout<<" DC ratio: "<<dc<<std::endl;
@@ -1018,12 +1020,16 @@ namespace triplet{
 	/** Note: since the scheduled tasks are ready tasks,
 	    global_timer + transmission_time is the EST of this task.
 	 */
-	float transmission_time = CalcTransmissionTime(*nd, *dev);
+	float transmission_time = CalcTransmissionTime(*nd, *dev, true, true);
 	float execution_time = CalcExecutionTime(*nd, *dev);
+
 
 	// TODO: change all the time from second to microsecond
 	// To avoid error, execution time should not be less than 1ms.
 	execution_time = std::max(execution_time, this->min_execution_time);
+
+	// This should be done in CalcTransmissionTime()
+	//transmission_time = std::max(transmission_time, this->min_transmission_time);
 
 	//Manage memory blocks data structures
 	int block_id = nd->GetId();
@@ -1626,9 +1632,10 @@ namespace triplet{
   /** Calculate the data transmission time if we put nd on dev,
       return the result as a float.
   */
-  float Runtime::CalcTransmissionTime(Node nd, Device dev){
+  float Runtime::CalcTransmissionTime(Node nd, Device dev, bool withConflicts, bool setAvaTime){
     float data_transmission_time=0.0;
 
+    //1. Calculate total_data_output
     float total_data_output = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
@@ -1639,7 +1646,7 @@ namespace triplet{
       }
     }
 
-    float network_bandwidth = 0.0;
+    //2. Calculate data_trans_ratio
     float data_trans_ratio = 1.0;
     if(nd.GetDataConsume() > ZERO_POSITIVE){
       if( total_data_output > nd.GetDataConsume() ){
@@ -1650,6 +1657,9 @@ namespace triplet{
 	data_trans_ratio = std::max(nd.GetDataDmd(), (float)0.0) / total_data_output;
       }
     }
+
+    //3. Walk through all the input nodes of nd, and calc the transmission time
+    float network_bandwidth = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
       int input_dev_id = input_nd->GetOccupied();
@@ -1660,9 +1670,14 @@ namespace triplet{
 	continue;
       }
 
+      // The quatity of time from now to the link avaliable time
+      float ava_time = 0.0;
       // Get the bandwith between the two devices
       if ((network_bandwidth = TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= BW_ZERO){
 	network_bandwidth = TaihuLightNetwork.GetBw(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(),  true);
+	ava_time = std::max(ava_time, TaihuLightNetwork.GetConAvaTime(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(),  true) - this->global_timer);
+      }else{//The devices are on the same node.
+	ava_time = std::max(ava_time, TaihuLightNetwork.GetConAvaTime(dev.GetId(), input_dev_id) - this->global_timer);
       }
 
       float ct; // Communication time
@@ -1678,7 +1693,23 @@ namespace triplet{
 	}
       }
 
-      data_transmission_time = std::max(ct, data_transmission_time);
+      ct = std::max(ct, this->min_transmission_time);
+
+      if(withConflicts){
+	data_transmission_time = std::max(ct + ava_time, data_transmission_time);
+      }else{
+	data_transmission_time = std::max(ct, data_transmission_time);
+      }
+
+      if(withConflicts && setAvaTime){
+	if ((TaihuLightNetwork.GetBw(dev.GetId(), input_dev_id)) <= BW_ZERO){
+	  TaihuLightNetwork.IncConAvaTime(dev.GetLocation(), TaihuLight[input_dev_id]->GetLocation(), ct, this->global_timer, true);
+
+	}else{//The devices are on the same node.
+	  TaihuLightNetwork.IncConAvaTime(dev.GetId(), input_dev_id, ct, this->global_timer);
+	}
+
+      }
     }
 
 #ifdef DEBUG

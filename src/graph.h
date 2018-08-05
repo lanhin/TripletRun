@@ -14,7 +14,7 @@ namespace triplet{
   class Node{
   public:
     Node();
-    Node(int id, float compDmd, float dataDmd, float data_consume, float data_generate);
+    Node(int id, float compDmd, float dataDmd, float dataConsume, float dataGenerate);
     ~Node();
 
     enum NodeStatus {

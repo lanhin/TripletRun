@@ -214,6 +214,16 @@ namespace triplet{
      */
     float GetBw(int src, int dst, bool BetweenNode=false); //Get bandwidth
 
+    /** Get connection available time
+	between divices or between nodes.
+    */
+    float GetConAvaTime(int src, int dst, bool BetweenNode=false);
+
+    /** Increase connection available time
+	between divices or between nodes.
+    */
+    void IncConAvaTime(int src, int dst, float IncAvaTime, float current, bool BetweenNode=false);
+
     /** Return NodeConNum
      */
     int GetNodeConNum();
@@ -235,7 +245,9 @@ namespace triplet{
     int DevConNum;
     float MeanBW; // Mean Bandwidth
     connection NodeConnection;
+    connection NodeConnectionAvaTime;
     connection DeviceConnection;
+    connection DeviceConnectionAvaTime;
   };
 
 } //namespace triplet

@@ -44,6 +44,7 @@ make clean
 13. Change time counting from second to microsecond.
 14. Timing simulation for performance profiling.
 15. Scheduling time simulation: use a constant or calculate it on demand.
+16. Communication startup costs of processors? Maybe a single value $L$ is better, which make the communication cost as: $c_{i, k} = L + \frac{data_{i, k}}{B_{m, n}}$ where $B$ is the bandwidth.
 
 ## Develope Notes
 - (2017-11-13) Now the simulator can really run and produce the processing time of the input graph. There're still many bugs to fix and many features to add.

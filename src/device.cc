@@ -6,6 +6,7 @@
 
 #include "device.h"
 #include "constants.h"
+#include "utils.h"
 #include <cassert>
 #include <iostream>
 
@@ -394,7 +395,7 @@ namespace triplet{
     assert(src >= 0);
     assert(dst >= 0);
     assert(src != dst);
-    assert(bw >= 0.0);
+    assert(bw > ZERO_NEGATIVE);
 
     if (src > dst){ //make sure that src < dst
       std::swap(src, dst);
@@ -402,9 +403,11 @@ namespace triplet{
     
     if (BetweenNode){
       NodeConnection[std::pair<int, int>(src, dst)] = bw;
+      NodeConnectionAvaTime[std::pair<int, int>(src, dst)] = 0.0;
       NodeConNum++;
     }else{
       DeviceConnection[std::pair<int, int>(src, dst)] = bw;
+      DeviceConnectionAvaTime[std::pair<int, int>(src, dst)] = 0.0;
       DevConNum++;
     }
 
@@ -439,9 +442,93 @@ namespace triplet{
       }else{
 	return 0.0;
       }
-
     }
   }
+
+  /** Get connection available time
+      between divices or between nodes.
+  */
+  float Connections::GetConAvaTime(int src, int dst, bool BetweenNode){
+#ifdef DEBUG
+    std::cout<<"GetConAvaTime, src: "<<src<<", dst: "<<dst<<", BetweenNode: "<<BetweenNode;
+#endif
+    assert(src >= 0);
+    assert(dst >= 0);
+    assert(src != dst);
+
+    if (src > dst){ //make sure that src < dst
+      std::swap(src, dst);
+    }
+
+    connection::iterator it;
+    if (BetweenNode){
+      if ((it = NodeConnectionAvaTime.find(std::pair<int, int>(src,dst))) != NodeConnectionAvaTime.end()){//find something
+#ifdef DEBUG
+	std::cout<<", return value: "<<it->second<<std::endl;
+#endif
+	return it->second;
+      }else{
+	log_error("GetConAvaTime error: didn't find the link.");
+	log_error("Src: "<<src<<", dst: "<<dst<<", BetweenNode:"<<BetweenNode);
+	exit(1);
+      }
+    }else{
+      if ((it = DeviceConnectionAvaTime.find(std::pair<int, int>(src,dst))) != DeviceConnectionAvaTime.end()){//find something
+#ifdef DEBUG
+	std::cout<<", return value: "<<it->second<<std::endl;
+#endif
+	return it->second;
+      }else{
+	log_error("GetConAvaTime error: didn't find the link.");
+	log_error("Src: "<<src<<", dst: "<<dst<<", BetweenNode:"<<BetweenNode);
+	exit(1);
+      }
+    }
+  }
+
+  /** Increase connection available time
+      between divices or between nodes.
+  */
+  void Connections::IncConAvaTime(int src, int dst, float IncAvaTime, float current, bool BetweenNode){
+#ifdef DEBUG
+    std::cout<<"IncConAvaTime, src: "<<src<<", dst: "<<dst<<", IncAvaTime: "<<IncAvaTime<<", global_timer: "<<current<<", BetweenNode: "<<BetweenNode<<std::endl;
+#endif
+    assert(src >= 0);
+    assert(dst >= 0);
+    assert(src != dst);
+    assert(IncAvaTime > ZERO_POSITIVE);
+    assert(current > ZERO_NEGATIVE);
+
+    if (src > dst){ //make sure that src < dst
+      std::swap(src, dst);
+    }
+
+    connection::iterator it;
+    if (BetweenNode){
+      if ((it = NodeConnectionAvaTime.find(std::pair<int, int>(src,dst))) != NodeConnectionAvaTime.end()){//find something
+#ifdef DEBUG
+	std::cout<<"Inc from "<<NodeConnectionAvaTime[std::pair<int, int>(src, dst)]<<" to "<<std::max(NodeConnectionAvaTime[std::pair<int, int>(src, dst)], current) + IncAvaTime<<std::endl;
+#endif
+	NodeConnectionAvaTime[std::pair<int, int>(src, dst)] = std::max(NodeConnectionAvaTime[std::pair<int, int>(src, dst)], current) + IncAvaTime;
+      }else{
+	log_error("IncConAvaTime error: didn't find the link.");
+	log_error("Src: "<<src<<", dst: "<<dst<<", BetweenNode:"<<BetweenNode);
+	exit(1);
+      }
+    }else{
+      if ((it = DeviceConnectionAvaTime.find(std::pair<int, int>(src,dst))) != DeviceConnectionAvaTime.end()){//find something
+#ifdef DEBUG
+	std::cout<<"Inc from "<<DeviceConnectionAvaTime[std::pair<int, int>(src, dst)]<<" to "<<std::max(DeviceConnectionAvaTime[std::pair<int, int>(src, dst)], current) + IncAvaTime<<std::endl;
+#endif
+	DeviceConnectionAvaTime[std::pair<int, int>(src, dst)] = std::max(DeviceConnectionAvaTime[std::pair<int, int>(src, dst)], current) + IncAvaTime;
+      }else{
+	log_error("IncConAvaTime error: didn't find the link.");
+	log_error("Src: "<<src<<", dst: "<<dst<<", BetweenNode:"<<BetweenNode);
+	exit(1);
+      }
+    }
+  }
+
 
   /** Return NodeConNum
    */
