@@ -380,10 +380,14 @@ namespace triplet{
 
   Connections::~Connections(){
     NodeConnection.clear();
+    NodeConnectionAvaTime.clear();
     DeviceConnection.clear();
+    DeviceConnectionAvaTime.clear();
 
     assert(NodeConnection.empty());
+    assert(NodeConnectionAvaTime.empty());
     assert(DeviceConnection.empty());
+    assert(DeviceConnectionAvaTime.empty());
   }
 
   /**  Add a new link between src and dst

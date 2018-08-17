@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
   float alpha = 0.5;
   float memfull_t = 0.9;
   float devfull_t = 0.2;
+  bool with_conflicts = false;
 
   while (1) {
     int this_option_optind = optind ? optind : 1;
@@ -109,10 +110,11 @@ int main(int argc, char *argv[])
       {"scost", 1, 0, 't'}, // Scheduler cost
       {"memfull", 1, 0, 'm'}, //mem_full_threshold
       {"devfull", 1, 0, 'f'}, //dev_full_threshold
+      {"with-conflicts", 1, 0, 'w'}, // with conflicts for DONF policies
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "a:c:d:f:g:hl:m:s:t:",
+    c = getopt_long(argc, argv, "a:c:d:f:g:hl:m:s:t:w:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -176,6 +178,8 @@ int main(int argc, char *argv[])
 	scheduler = triplet::DONF2;
 	std::cout<<"scheduler DONF2"<<std::endl;
       }else if(strcmp("DONFM", optarg) == 0 || strcmp("donfm", optarg) == 0){
+	/** DONFM: Firstly pick tasks that tend to release memory full devices
+	 */
 	scheduler = triplet::DONFM;
 	std::cout<<"scheduler DONFM"<<std::endl;
       }else if(strcmp("HEFT", optarg) == 0 || strcmp("heft", optarg) == 0){
@@ -198,6 +202,19 @@ int main(int argc, char *argv[])
     case 't':
       assert(optarg);
       scheduler_cost = atof(optarg);
+      break;
+    case 'w':
+      assert(optarg);
+      if(strcmp("True", optarg) == 0 || strcmp("true", optarg) == 0){
+	with_conflicts = true;
+	std::cout<<"With conflicts: "<<with_conflicts<<std::endl;
+      }else if(strcmp("False", optarg) == 0 || strcmp("false", optarg) == 0){
+	with_conflicts = false;
+	std::cout<<"With conflicts: "<<with_conflicts<<std::endl;
+      }else{
+	std::cout<<"Error: cannot identify w option "<<optarg<<std::endl;
+	exit(1);
+      }
       break;
     default:
       std::cout<<"Option processing error!"<<std::endl;
@@ -229,7 +246,7 @@ int main(int argc, char *argv[])
   rt.SetAlpha(alpha);
   rt.SetMemFull(memfull_t);
   rt.SetDevFull(devfull_t);
-  rt.InitRuntime(scheduler, dcratio);
+  rt.InitRuntime(scheduler, dcratio, with_conflicts);
   rt.SetLoadBalanceThreshold(lb_threshold);
   rt.SetSchedulerCost(scheduler_cost);
   rt.Execute();

@@ -5,7 +5,7 @@
 
 Extract the important information from triplet logs.
 Usage: python logextract.py <logfiledir>
-The output file 
+The output files are <logfiledir>.csv and <logfiledir>.err
 '''
 
 from __future__ import print_function
@@ -13,7 +13,7 @@ import sys
 import csv
 import os
 
-import trace_analysis
+#import trace_analysis
 
 errorfiles=list()
 
@@ -22,14 +22,14 @@ if (len(sys.argv)) != 2:
     exit(1)
 
 def output(extractlist, fileout):
-    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency', 'dev used', 'imbalance issues']
+    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Com conflicts', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency', 'dev used', 'min free RAM', 'imbalance issues']
     extractlist.insert(0, header)
     with open (fileout, "wb") as f:
         writer = csv.writer(f)
         writer.writerows(extractlist)
 
 def fileprocess(filein):
-    entry = ['']*14
+    entry = ['']*16
     devused = 0
     with open(filein, "rb") as source:
         startprocess = False
@@ -43,33 +43,37 @@ def fileprocess(filein):
                     entry[2] = line.strip().split(': ')[-1]
                 if "DC Ratio" in line:
                     entry[3] = line.strip().split(': ')[-1]
-                if "Total nodes" in line:
+                if "With Conflicts" in line:
                     entry[4] = line.strip().split(': ')[-1]
-                if "Global timer" in line:
+                if "Total nodes" in line:
                     entry[5] = line.strip().split(': ')[-1]
-                if "Max parallelism" in line:
+                if "Global timer" in line:
                     entry[6] = line.strip().split(': ')[-1]
-                if "Mean wait time" in line:
+                if "Max parallelism" in line:
                     entry[7] = line.strip().split(': ')[-1]
-                if "Total execution" in line:
+                if "Mean wait time" in line:
                     entry[8] = line.strip().split(': ')[-1]
-                if "SLR" in line:
+                if "Total execution" in line:
                     entry[9] = line.strip().split(': ')[-1]
-                if "Speedup" in line:
+                if "SLR" in line:
                     entry[10] = line.strip().split(': ')[-1]
-                if "Efficiency" in line:
+                if "Speedup" in line:
                     entry[11] = line.strip().split(': ')[-1]
+                if "Efficiency" in line:
+                    entry[12] = line.strip().split(': ')[-1]
                 if "occupied time" in line:
                     occutime = line.strip().split('occupied time:')[1].split(' ')[0]
                     if float(occutime) > 0:
                         devused += 1
-                        entry[12] = devused
+                        entry[13] = devused
+                if "Min free" in line:
+                    entry[14] = line.strip().split(': ')[-1]
             elif "Simulation Report" in line:
                 startprocess = True
     if entry[0] == '':
         print("file error:", filein)
         errorfiles.append(filein)
-    entry[13] = trace_analysis.loadbalanceprocess(filein)
+    #entry[15] = trace_analysis.loadbalanceprocess(filein)
     return entry
 
 def main():

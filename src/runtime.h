@@ -88,7 +88,7 @@ namespace triplet{
     /** Init the runtime data structures: pending_list and ready_queue
 	and calculate the OCT, RankOCT of the graph.
      */
-    void InitRuntime(SchedulePolicy sch = PEFT, float dc = 1.0);
+    void InitRuntime(SchedulePolicy sch = PEFT, float dc = 1.0, bool wc = false);
 
     /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
 	This function cannot be moved into class Graph
@@ -261,6 +261,8 @@ namespace triplet{
     int mem_full_dev; // Number of devices whoes RAM is (nearly) full
     int load_balance_threshold; // Load balance task number threshold, 0 means no load balance policy
     float load_time; // The load balance time threshold
+
+    bool with_conflicts; // With communication conflicts in DONF policies.
 
     float mem_full_threshold; // RAM full threshold for a single device
     float dev_full_threshold; // Overall device memory full mode threshold

@@ -36,6 +36,7 @@ namespace triplet{
     max_parallel = 0;
     load_balance_threshold = 0;
     load_time = -1;
+    with_conflicts = false;
     mem_full_threshold = 0.9;
     dev_full_threshold = 0.2;
     max_devCompute = 0.0;
@@ -318,7 +319,7 @@ namespace triplet{
   /** Init the runtime data structures: pending_list and ready_queue
       and calculate the OCT, RankOCT of the graph.
   */
-  void Runtime::InitRuntime(SchedulePolicy sch, float dc){
+  void Runtime::InitRuntime(SchedulePolicy sch, float dc, bool wc){
     log_start("Runtime initialization...");
 
     // Init min_execution_time and min_transmission_time
@@ -330,6 +331,7 @@ namespace triplet{
     Scheduler = sch;
     RRCounter = -1; // Always set it -1 at the beginning of execution?
     DCRatio = dc;
+    this->with_conflicts = wc;
 
     if (Scheduler == PEFT){
       DECLARE_TIMING(oct);
@@ -1380,10 +1382,6 @@ namespace triplet{
 
     case FCFS:
     case SJF:
-    case DONF:
-    case DONF2:
-    case ADON:
-    case DONFM:
     case HEFT:
     case CPOP:
     case HSIP:
@@ -1411,8 +1409,8 @@ namespace triplet{
       /** Traverse all the devices,
 	  pick the one with the min EFT.
        */
-      float min_OEFT = -1;
       float mean_load = CalcMeanLoad();
+      float min_OEFT = -1;
       // 1.Traverse all the devices
       for (auto& it: TaihuLight){
 	if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
@@ -1421,11 +1419,11 @@ namespace triplet{
 	}
 #ifdef DEBUG
 	std::cout<<"lb_balance: "<<load_balance_threshold<<", mean load: "<<mean_load<<", dev load:"<<(it.second)->GetLoad()<<std::endl;
-#endif
+#endif // DEBUG
 	if(this->load_balance_threshold && (it.second)->GetLoad() > std::max(mean_load, float(this->load_balance_threshold))){
 #ifdef DEBUG
 	  std::cout<<"a load balance pick"<<std::endl;
-#endif
+#endif // DEBUG
 	  continue;
 	}
 
@@ -1458,6 +1456,8 @@ namespace triplet{
 	    }
 	    ct = CommunicationDataSize(pred, ndId) / ct;
 
+	    ct = std::max(ct, this->min_transmission_time);
+
 	    /** Note: since the scheduled tasks are ready tasks,
 		tmpEST = global_timer + ct
 	    */
@@ -1483,7 +1483,7 @@ namespace triplet{
 	float OEFT;
 	if (Scheduler == PEFT){
 	OEFT = EFT + OCT[ndId][it.first];
-	}else{ //HSIP
+	}else{ //HSIP and others
 	  OEFT = EFT;
 	}
 
@@ -1497,6 +1497,46 @@ namespace triplet{
 	std::cout<<"ld: "<<dev->GetLoad()<<" "<<mean_load<<" t: "<<(dev->GetAvaTime() - global_timer)<<std::endl;
       }
 #endif
+    }
+      break;
+
+    case DONF:
+    case DONF2:
+    case ADON:
+    case DONFM:{
+      /** Traverse all the devices,
+	  pick the one with the min EFT.
+      */
+      float min_EFT = -1;
+      // 1.Traverse all the devices
+      for (auto& it: TaihuLight){
+	if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
+	  // The free memory of the device is too little, skip
+	  continue;
+	}
+
+	float w = nd->GetCompDmd() / (it.second)->GetCompPower();
+
+	// 2. Calculate EST by traversing all the pred(ndId)
+	float ct;
+	if(this->with_conflicts){
+	  ct = CalcTransmissionTime(*nd, *(it.second), true, false);
+	}else{
+	  ct = CalcTransmissionTime(*nd, *(it.second), false, false);
+	}
+
+	// Since all the scheduled tasks' preds has been finished, we don't consider their AFT here.
+	float EST = std::max((it.second)->GetAvaTime(), global_timer + ct);
+
+	float EFT = EST + w;
+
+	if ( (min_EFT < 0) || (min_EFT > EFT) ){
+	  min_EFT = EFT;
+	  dev = it.second;
+	}
+
+      }
+
     }
       break;
 
@@ -1759,15 +1799,29 @@ namespace triplet{
       Node* nd = global_graph.GetNode(succId);
       for (auto& it : nd->input){
 	Node* input_nd = global_graph.GetNode(it);
-	total_data_output += std::max(input_nd->GetDataDmd(), (float)0.0);
+	if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
+	  total_data_output += input_nd->GetDataGenerate();
+	}else{
+	  total_data_output += std::max(input_nd->GetDataDmd(), (float)0.0);
+	}
       }
 
       // Get how much of the output data should be transfered.
-      if (total_data_output > nd->GetDataDmd()){
-	data_trans_ratio = std::max(nd->GetDataDmd(), (float)0.0) / total_data_output;
+      if(nd->GetDataConsume() > ZERO_POSITIVE){
+	if( total_data_output > nd->GetDataConsume() ){
+	  data_trans_ratio = std::max(nd->GetDataConsume(), (float)0.0) / total_data_output;
+	}
+      }else{
+	if (total_data_output > nd->GetDataDmd()){
+	  data_trans_ratio = std::max(nd->GetDataDmd(), (float)0.0) / total_data_output;
+	}
       }
 
-      dataSize = std::max(global_graph.GetNode(predId)->GetDataDmd(), (float)0.0) * data_trans_ratio;
+      if(global_graph.GetNode(predId)->GetDataGenerate() > ZERO_POSITIVE){
+	dataSize = std::max(global_graph.GetNode(predId)->GetDataGenerate(), (float)0.0) * data_trans_ratio;
+      }else{
+	dataSize = std::max(global_graph.GetNode(predId)->GetDataDmd(), (float)0.0) * data_trans_ratio;
+      }
     }
     return dataSize;
   }
@@ -1986,6 +2040,7 @@ namespace triplet{
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
     std::cout<<" Scheduling Policy: "<<Scheduler<<std::endl;
     std::cout<<" DC Ratio: "<<DCRatio<<std::endl;
+    std::cout<<" With Conflicts: "<<with_conflicts<<std::endl;
     std::cout<<" Mem full threshold: "<<mem_full_threshold<<std::endl;
     std::cout<<" Dev full threshold: "<<dev_full_threshold<<std::endl;
     std::cout<<" Total nodes: "<<task_total<<std::endl;
