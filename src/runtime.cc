@@ -380,12 +380,12 @@ namespace triplet{
       this->absCP = global_graph.CalcPriorityCPOP();
     }
 
-    if (Scheduler == DONF || Scheduler == DONF2 || Scheduler == ADON || Scheduler == DONFM){
+    if (Scheduler == DONF || Scheduler == DONF2 || Scheduler == ADON || Scheduler == DONFM || Scheduler == DONFL || Scheduler == DONFL2 || Scheduler == ADONL){
       DECLARE_TIMING(NDON);
       log_start("NDON calculation...");
       START_TIMING(NDON);
       CalcNDON();
-      if(Scheduler == ADON){
+      if(Scheduler == ADON || Scheduler == ADONL){
 	CalcADON();
       }
       STOP_TIMING(NDON);
@@ -1228,7 +1228,10 @@ namespace triplet{
     case DONF:
     case DONF2:
     case ADON:
-    case DONFM:{
+    case DONFM:
+    case DONFL:
+    case DONFL2:
+    case ADONL:{
       if(InnerScheduler == DONFM){//this->mem_full_dev / this->deviceNum >= this->dev_full_threshold){
 	//RAM full pick
 	/*
@@ -1282,11 +1285,11 @@ namespace triplet{
 	std::vector<int>::iterator iter = ready_queue.begin();
 	for (; iter != ready_queue.end(); iter++){
 	  Node* nd = global_graph.GetNode(*iter);
-	  if( Scheduler == ADON ){ // ADON
+	  if( Scheduler == ADON || Scheduler == ADONL){ // ADON, ADONL
 	    degree = nd->GetRank_ADON();
-	  }else if( Scheduler == DONF2 ){ // DONF2
+	  }else if( Scheduler == DONF2 || Scheduler == DONFL2 ){ // DONF2, DONFL2
 	    degree = NDON(nd, 2);
-	  }else{ // DC, DONF
+	  }else{ // DC, DONF, DONFL
 	    degree = NDON(nd);
 	  }
 	  if (maxOutDegree < degree){
@@ -1385,7 +1388,10 @@ namespace triplet{
     case HEFT:
     case CPOP:
     case HSIP:
-    case PEFT:{
+    case PEFT:
+    case DONFL:
+    case DONFL2:
+    case ADONL:{
       /** For tasks on critical path, assign them to the fastest device.
        */
       float dv = nd->GetPriorityCPOP() - this->absCP;
@@ -1450,9 +1456,13 @@ namespace triplet{
 	    tmpEST = std::max(predNd->GetAFT(), global_timer);
 	  }else{//on different device
 	    float ct;// Comunication time
+	    float ava_time;//The link available time
 	    ct = TaihuLightNetwork.GetBw((it.second)->GetId(), predNd->GetOccupied()); //bandwith
 	    if (ct <= BW_ZERO){//get bandwith between nodes
 	      ct = TaihuLightNetwork.GetBw((it.second)->GetLocation(), TaihuLight[predNd->GetOccupied()]->GetLocation(), true);
+	      ava_time = std::max((float)0.0, TaihuLightNetwork.GetConAvaTime((it.second)->GetLocation(), TaihuLight[predNd->GetOccupied()]->GetLocation(), true) - this->global_timer);
+	    }else{
+	      ava_time = std::max((float)0.0, TaihuLightNetwork.GetConAvaTime((it.second)->GetId(), predNd->GetOccupied()) - this->global_timer);
 	    }
 	    ct = CommunicationDataSize(pred, ndId) / ct;
 
@@ -1462,6 +1472,9 @@ namespace triplet{
 		tmpEST = global_timer + ct
 	    */
 	    tmpEST = std::max(predNd->GetAFT(), global_timer) + ct;
+	    if(Scheduler == DONFL || Scheduler == DONFL2 || Scheduler == ADONL){
+	      tmpEST += ava_time;
+	    }
 	  }
 	  EST = std::max(tmpEST, EST);
 	}
@@ -2023,6 +2036,9 @@ namespace triplet{
       INSERT_ELEMENT(DONF2);
       INSERT_ELEMENT(ADON);
       INSERT_ELEMENT(DONFM);
+      INSERT_ELEMENT(DONFL);
+      INSERT_ELEMENT(DONFL2);
+      INSERT_ELEMENT(ADONL);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT
@@ -2040,6 +2056,7 @@ namespace triplet{
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
     std::cout<<" Scheduling Policy: "<<Scheduler<<std::endl;
     std::cout<<" DC Ratio: "<<DCRatio<<std::endl;
+    std::cout<<" Alpha: "<<alpha_DON<<std::endl;
     std::cout<<" With Conflicts: "<<with_conflicts<<std::endl;
     std::cout<<" Mem full threshold: "<<mem_full_threshold<<std::endl;
     std::cout<<" Dev full threshold: "<<dev_full_threshold<<std::endl;

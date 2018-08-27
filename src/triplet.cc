@@ -67,8 +67,9 @@ void Usage(){
   std::cout<<"\t-m, --memfull <value>: mem_full_threshold"<<std::endl;
   std::cout<<"\t-s, --scheduler <policy>: set schduling policy."<<std::endl;
   std::cout<<"\t-t, --scost <value>: Scheduler cost"<<std::endl<<std::endl;
+  std::cout<<"\t-w, --with-conflicts <true/false>: With conflicts or not when calculating data transmission time."<<std::endl<<std::endl;
 
-  std::cout<<"\tScheduler supported: RR, FCFS, SJF, PEFT, HSIP, DONF, DONF2, DONFM, HEFT, CPOP, DATACENTRIC, ADON"<<std::endl;
+  std::cout<<"\tScheduler supported: RR, FCFS, SJF, PEFT, HSIP, DONF, DONF2, DONFL, DONFL2, DONFM, HEFT, CPOP, DATACENTRIC, ADON, ADONL"<<std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -194,6 +195,15 @@ int main(int argc, char *argv[])
       }else if(strcmp("ADON", optarg) == 0 || strcmp("adon", optarg) == 0){
 	scheduler = triplet::ADON;
 	std::cout<<"scheduler ADON"<<std::endl;
+      }else if(strcmp("DONFL", optarg) == 0 || strcmp("donfl", optarg) == 0){
+	scheduler = triplet::DONFL;
+	std::cout<<"scheduler DONFL"<<std::endl;
+      }else if(strcmp("DONFL2", optarg) == 0 || strcmp("donfl2", optarg) == 0){
+	scheduler = triplet::DONFL2;
+	std::cout<<"scheduler DONFL2"<<std::endl;
+      }else if(strcmp("ADONL", optarg) == 0 || strcmp("adonl", optarg) == 0){
+	scheduler = triplet::ADONL;
+	std::cout<<"scheduler ADONL"<<std::endl;
       }else{
 	std::cout<<"Error: cannot identify scheduler "<<optarg<<std::endl;
 	exit(1);

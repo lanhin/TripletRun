@@ -22,14 +22,14 @@ if (len(sys.argv)) != 2:
     exit(1)
 
 def output(extractlist, fileout):
-    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Com conflicts', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency', 'dev used', 'min free RAM', 'imbalance issues']
+    header = ['DAG', 'Cluster', 'Policy', 'DC ratio', 'Com conflicts', 'Nodes', 'Makespan', 'Max parallel', 'Mean wait time', 'Total execute time', 'SLR', 'Speedup', 'Efficiency', 'dev used', 'min free RAM', 'imbalance issues', 'alpha']
     extractlist.insert(0, header)
     with open (fileout, "wb") as f:
         writer = csv.writer(f)
         writer.writerows(extractlist)
 
 def fileprocess(filein):
-    entry = ['']*16
+    entry = ['']*17
     devused = 0
     with open(filein, "rb") as source:
         startprocess = False
@@ -68,6 +68,8 @@ def fileprocess(filein):
                         entry[13] = devused
                 if "Min free" in line:
                     entry[14] = line.strip().split(': ')[-1]
+                if "Alpha" in line:
+                    entry[16] = line.strip().split(': ')[-1]
             elif "Simulation Report" in line:
                 startprocess = True
     if entry[0] == '':

@@ -29,6 +29,9 @@ namespace triplet{
     DONF2, // 2-degree degree of node first
     ADON, // All-level degree of node
     DONFM, // min memory
+    DONFL, //L means lite/light
+    DONFL2,
+    ADONL,
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
