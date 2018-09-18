@@ -40,7 +40,8 @@ if [ -f $OPTIONSFILE ]; then
 	read -u1000
 	{
 	    echo $LINE
-	    python dot2json.py $LINE
+	    #python dot2json.py $LINE
+	    python dartsjson.py $LINE
 	    echo >&1000
 	} &
 	IFS='

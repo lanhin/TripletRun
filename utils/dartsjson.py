@@ -70,9 +70,12 @@ with open(filein, "rb") as source:
             continue
         else: # a node
             ndId = line.strip().split(' ')[0]
-            if not nodesdict.has_key(ndId):
-                nodesdict[ndId] = tmpid
-                tmpid += 1
+            if re.search('com=\"\d+\"', line):
+                if not nodesdict.has_key(ndId):
+                    nodesdict[ndId] = tmpid
+                    tmpid += 1
+            else:
+                continue
 print (nodesdict)
 
 
@@ -101,6 +104,11 @@ with open(filein, "rb") as source:
             if not nodesdict.has_key(src):
                 nodesdict[src] = tmpid
                 tmpid += 1
+                nodes.append((str(nodesdict[src]), "1", "-1", "-1"))
+            if not nodesdict.has_key(dst):
+                nodesdict[dst] = tmpid
+                tmpid += 1
+                nodes.append((str(nodesdict[dst]), "1", "-1", "-1"))
 
             edges.append((str(nodesdict[src]), str(nodesdict[dst]), weight))
         else: # a node
@@ -126,4 +134,5 @@ with open(filein, "rb") as source:
 
 
             nodes.append((str(nodesdict[ndId]), compCost, consume, generate))
+#print(nodes)
 jsonout(fileout, nodes, edges)
