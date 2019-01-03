@@ -11,18 +11,18 @@
 #include <map>
 
 namespace triplet{
+  enum NodeStatus {
+    INIT = 1,
+    READY,
+    RUNNING,
+    FINISHED
+  };
+
   class Node{
   public:
     Node();
     Node(int id, float compDmd, float dataDmd, float dataConsume, float dataGenerate);
     ~Node();
-
-    enum NodeStatus {
-      INIT = 1,
-      READY,
-      RUNNING,
-      FINISHED
-    };
 
     typedef std::set<int> nodeset;
 

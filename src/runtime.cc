@@ -409,7 +409,7 @@ namespace triplet{
 
       if (pend == 0){ //add it into ready_queue
 	ready_queue.push_back(*iter);
-	global_graph.GetNode(*iter)->SetStatus(Node::READY); // Set node's status
+	global_graph.GetNode(*iter)->SetStatus(READY); // Set node's status
 
 	// Calculate Cpath computatin cost
 	global_graph.CalcCpathCC(*iter, this->max_devCompute, this->min_execution_time);
@@ -807,6 +807,23 @@ namespace triplet{
     }
   }
 
+  /** Output NodeStatus as enum items.
+   */
+
+  std::ostream& operator<<(std::ostream& out, const NodeStatus values){
+    static std::map<NodeStatus, std::string> Nodestrings;
+    if (Nodestrings.size() == 0){
+#define INSERT_ELEMENT(p) Nodestrings[p] = #p
+      INSERT_ELEMENT(INIT);
+      INSERT_ELEMENT(READY);
+      INSERT_ELEMENT(RUNNING);
+      INSERT_ELEMENT(FINISHED);
+#undef INSERT_ELEMENT
+    }
+
+    return out << Nodestrings[values];
+    }
+
   /** The whole execution logic.
    */
   // TODO: Count the schduling time itself
@@ -889,7 +906,7 @@ namespace triplet{
 
 	    if (pendingNum == 0){
 	      ready_queue.push_back(*ndit);
-	      global_graph.GetNode(*ndit)->SetStatus(Node::READY); // Set node's status
+	      global_graph.GetNode(*ndit)->SetStatus(READY); // Set node's status
 
 	      // Calculate Cpath computatin cost
 	      global_graph.CalcCpathCC(*ndit, this->max_devCompute, this->min_execution_time);
@@ -902,7 +919,7 @@ namespace triplet{
 
 	  // erase the task from execution_queue
 	  execution_queue.erase(it++);
-	  nd->SetStatus(Node::FINISHED);
+	  nd->SetStatus(FINISHED);
 
 #if 0
 	  std::cout<<"Node "<<it->first<<" finished execution at "<<global_timer<< ". It used device "<<devId<<", status:"<<nd->GetStatus()<<std::endl;
@@ -968,7 +985,7 @@ namespace triplet{
 	if ( ready_queue.size() == 1 && Scheduler == HSIP && nd->GetInNum() == 0){
 	  //Entry task duplication
 	  EntryTaskDuplication(nd);
-	  nd->SetStatus(Node::RUNNING);
+	  nd->SetStatus(RUNNING);
 	  continue;
 	}
 	// Entry task duplication policy doesn't need this.
@@ -1015,7 +1032,7 @@ namespace triplet{
 	}
 
 	nd->SetOccupied(dev->GetId());
-	nd->SetStatus(Node::RUNNING);
+	nd->SetStatus(RUNNING);
 
 	dev->IncreaseLoad(1);
 
@@ -1106,7 +1123,7 @@ namespace triplet{
 #if 1
 	//Debug
 	std::cout<<"Node "<<task_node_id<<" on "<<dev->GetId();
-	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status:"<<nd->GetStatus()<<", wait time:"<<nd->GetWaitTime()<<std::endl;
+	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status: "<<nd->GetStatus()<<", wait time:"<<nd->GetWaitTime()<<std::endl;
 #endif
 #if 0
 	std::cout<<"Device ava time updated to: "<<dev->GetAvaTime()<<"s, Node AFT updated to: "<<nd->GetAFT()<<std::endl;
@@ -1124,7 +1141,7 @@ namespace triplet{
       }
 
       for(auto& ite: execution_queue){
-	assert(global_graph.GetNode(ite.first)->GetStatus() == Node::RUNNING);
+	assert(global_graph.GetNode(ite.first)->GetStatus() == RUNNING);
       }
 
     }

@@ -320,7 +320,7 @@ namespace triplet{
   /** Get node status.
       Only for debug at present.
    */
-  Node::NodeStatus Node::GetStatus(){
+  NodeStatus Node::GetStatus(){
     return this->status;
   }
 
