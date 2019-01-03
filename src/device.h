@@ -180,15 +180,15 @@ namespace triplet{
 
   protected:
     bool mem_full; // RAM full flag
-    int id_;
-    float computing_power;
-    float RAM_size;
-    float Allocated_RAM;  // number of RAM size in use
-    float bandwidth;
     DeviceStatus status;
+    int id_;
     int location; //on which node does the device locate
     int finished_tasks; // The number of tasks finished by this device
     int running_tasks; // The number of tasks still running on this device
+    float computing_power;
+    float RAM_size;
+    float Allocated_RAM;  // number of RAM size in use
+    float bandwidth;  // Memory access bandwidth
     float execution_time; // The time that the device are calculating
     float data_trans_time; // The time that the device are waiting for input data transmission
     float available_time; // The time that this device will be ready for next task

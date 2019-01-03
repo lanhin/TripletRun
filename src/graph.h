@@ -333,7 +333,6 @@ namespace triplet{
     typedef std::map<int,Node*> graphmap;
   protected:
     graphmap graph_;
-    std::map<std::pair<int ,int>, int> comCostMap;
     int numEdge;
     int numNode;
     int maxNode; //Max node id
@@ -344,6 +343,8 @@ namespace triplet{
     float total_computation_cost; //Summary of computation cost
     float total_memory_cost; //Summary of memory cost
     float total_edge_weight; //Summary of edge weight
+
+    std::map<std::pair<int ,int>, int> comCostMap;  //Communication cost map
   };
 }
 

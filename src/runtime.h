@@ -247,30 +247,16 @@ namespace triplet{
 
   protected:
     bool ETD; // Entry task duplication flag
+    bool with_conflicts; // With communication conflicts in DONF policies.
+    SchedulePolicy Scheduler; // define the scheduler
     int deviceNum; // The total number of devices in TaihuLight.
     int deviceInUse; // The number of devices in BUSY status.
-    SchedulePolicy Scheduler; // define the scheduler
-    Graph global_graph; // The computing graph.
-    Cluster TaihuLight; // The cluster.
-    Connections TaihuLightNetwork; // Network of the cluster.
-    float scheduler_ava_time; // When the next scheduling could occur.
-    float global_timer; // For recording global time.
-    float scheduler_mean_cost; // Mean cost of scheduling.
-    float mean_computing_power; // Mean computation power of all devices.
-    float DCRatio; // Data centric ratio, used in devicepick
     int RRCounter; // Counter for RR policy
     int max_devId; // Max device id in the cluster
     int max_parallel; // Max parallelism
     int mem_full_dev; // Number of devices whoes RAM is (nearly) full
     int load_balance_threshold; // Load balance task number threshold, 0 means no load balance policy
-    float load_time; // The load balance time threshold
 
-    bool with_conflicts; // With communication conflicts in DONF policies.
-
-    float mem_full_threshold; // RAM full threshold for a single device
-    float dev_full_threshold; // Overall device memory full mode threshold
-
-    float max_devCompute; // Max device compute power
     int max_computeDevId; // The device id that with the max compute power
 
     int task_total; // Total tasks scheduled
@@ -278,6 +264,15 @@ namespace triplet{
     int dev_hit_counter; // DATACENTRIC device pick hit
     int dc_valid_counter; // The times that DATACENTRIC really works
 
+    float scheduler_ava_time; // When the next scheduling could occur.
+    float global_timer; // For recording global time.
+    float scheduler_mean_cost; // Mean cost of scheduling.
+    float mean_computing_power; // Mean computation power of all devices.
+    float DCRatio; // Data centric ratio, used in devicepick
+    float load_time; // The load balance time threshold
+    float mem_full_threshold; // RAM full threshold for a single device
+    float dev_full_threshold; // Overall device memory full mode threshold
+    float max_devCompute; // Max device compute power
     float max_cpath_cc; // Record the critical path computatin cost summary
     float absCP; // The |CP| value used in device selection phase of CPOP policy
     float min_execution_time; // The min execution time of a task
@@ -295,10 +290,9 @@ namespace triplet{
     double task_pick_time;
     double device_pick_time;
 
+    float **OCT; // The Optimistic Cost Table used in PEFT
     std::string graph_file_name;
     std::string cluster_file_name;
-
-    float **OCT; // The Optimistic Cost Table used in PEFT
 
     /* TODO: move this idset into class graph? */
     std::set<int> idset;  //Node id set
@@ -309,6 +303,10 @@ namespace triplet{
     std::vector<std::pair<int,float>>block_free_queue; // blockid -> refer decrease time
     std::map<int, int> pending_list; // nodeid -> pending input
     std::map<int, MemoryBlock*> BlocksMap; // Memory blocks pool, blockid -> memory block
+
+    Graph global_graph; // The computing graph.
+    Cluster TaihuLight; // The cluster.
+    Connections TaihuLightNetwork; // Network of the cluster.
   };// Class Runtime
 }
 
