@@ -208,6 +208,14 @@ namespace triplet{
      */
     bool IsReady();
 
+    /** Add a ratio for device type TYPE.
+     */
+    void AddRatio(int type, float ratio);
+
+    /** Get speed ratio for device type TYPE.
+     */
+    float GetRatio(int type);
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -241,6 +249,8 @@ namespace triplet{
     float cpath_cc; // Critical path computation cost value
     float NDON; // Normalized degree of node
     float rank_ADON; // Rank used in ADON policy
+
+    std::map<int, float> SpeedRatio; //Speed ratios of different device type
   };
 
   class Graph{

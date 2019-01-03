@@ -15,6 +15,7 @@ namespace triplet{
   public:
     Device();
     Device(int id, float compute, float RAM, float bw, int loc);
+    Device(int id, float compute, float RAM, float bw, int loc, int type);
     ~Device();
 
     enum DeviceStatus {
@@ -178,10 +179,19 @@ namespace triplet{
      */
     bool IsFull();
 
+    /** Set DevType
+     */
+    void SetType(int type);
+
+    /** Get DevType
+     */
+    int GetType();
+
   protected:
     bool mem_full; // RAM full flag
     DeviceStatus status;
     int id_;
+    int DevType; //Device type, enum is not very suitable since it's not extendable
     int location; //on which node does the device locate
     int finished_tasks; // The number of tasks finished by this device
     int running_tasks; // The number of tasks still running on this device

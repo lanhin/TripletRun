@@ -155,8 +155,8 @@ namespace triplet{
     float CalcNearestFinishTime();
 
     /** Calculate the data transmission time if we put nd on dev,
-	withConflicts: consider the 
-	setAvaTime:
+	withConflicts: consider the available time of the link
+	setAvaTime: set the available time of the link
 	Return the result as a float.
      */
     float CalcTransmissionTime(Node nd, Device dev, bool withConflicts=false, bool setAvaTime=false);

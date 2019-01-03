@@ -116,10 +116,10 @@ namespace triplet{
       std::string dataConsume = root["nodes"][index].get("c", "-1.0").asString();
       std::string dataGenerate = root["nodes"][index].get("g", "-1.0").asString();
       int id1 = std::stoi(id);
-      float comDmd1 = std::stof(computeDemand, 0);
-      float dataDmd1 = std::stof(dataDemand, 0);
-      float dataConsume1 = std::stof(dataConsume, 0);
-      float dataGenerate1 = std::stof(dataGenerate, 0);
+      float comDmd1 = std::stof(computeDemand);
+      float dataDmd1 = std::stof(dataDemand);
+      float dataConsume1 = std::stof(dataConsume);
+      float dataGenerate1 = std::stof(dataGenerate);
 
       if (comDmd1 < 1){
 	comDmd1 = 0.1;
@@ -146,6 +146,25 @@ namespace triplet{
       std::cout<<"Edge "<<src1<<" -> "<<dst1<<", cost: "<<global_graph.GetComCost(src1, dst1)<<std::endl;
 #endif
     }
+
+    for (int index = 0; index < root["ratios"].size(); index++){
+      std::string id = root["ratios"][index].get("id", "-1").asString();
+      std::string type = root["ratios"][index].get("type", "-1").asString();
+      std::string ratio = root["ratios"][index].get("ratio", "1.0").asString();
+
+      int id1 = std::stoi(id);
+      int type1 = std::stoi(type);
+      float ratio1 = std::stof(ratio);
+
+      if(id1 >= 0 && type1 >= 0){
+	global_graph.GetNode(id1)->AddRatio(type1, ratio1);
+
+#if 0
+	std::cout<<"Node "<<id1<<", type: "<<type1<<", speed ratio: "<<ratio1<<", recheck: "<<global_graph.GetNode(id1)->GetRatio(type1)<<std::endl;
+#endif
+      }
+    }
+
 
     /** Add source and sink vertex if need.
      */

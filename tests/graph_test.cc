@@ -34,6 +34,14 @@ TEST(GraphTest, OCCW){
   // 4th level
   graph->AddNode(8, 10, 10);
 
+  EXPECT_FLOAT_EQ(graph->GetNode(0)->GetRatio(1), 1.0);
+  graph->GetNode(0)->AddRatio(1, 0.5);
+  EXPECT_FLOAT_EQ(graph->GetNode(0)->GetRatio(1), 0.5);
+  EXPECT_FLOAT_EQ(graph->GetNode(0)->GetRatio(2), 1.0);
+  EXPECT_FLOAT_EQ(graph->GetNode(0)->GetRatio(3), 1.0);
+  EXPECT_FLOAT_EQ(graph->GetNode(1)->GetRatio(4), 1.0);
+  EXPECT_FLOAT_EQ(graph->GetNode(1)->GetRatio(5), 1.0);
+
   graph->AddEdge(3, 8);
   graph->AddEdge(4, 8, 5);
   graph->AddEdge(5, 8);

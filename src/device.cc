@@ -22,11 +22,17 @@ namespace triplet{
       execution_time(0.0),
       data_trans_time(0.0),
       Allocated_RAM(0),
+      DevType(0),
       available_time(0.0) {}
 
   Device::Device(int id, float compute, float RAM, float bw, int loc)
-    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0), available_time(0.0) {
+    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0),DevType(0),available_time(0.0) {
     status = FREE;}
+
+  Device::Device(int id, float compute, float RAM, float bw, int loc, int type)
+    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0),DevType(type),available_time(0.0) {
+    status = FREE;}
+
 
   Device::~Device(){}
 
@@ -367,6 +373,18 @@ namespace triplet{
    */
   bool Device::IsFull(){
     return this->mem_full;
+  }
+
+  /** Set DevType
+   */
+  void Device::SetType(int type){
+    this->DevType = type;
+  }
+
+  /** Get DevType
+   */
+  int Device::GetType(){
+    return this->DevType;
   }
 
 

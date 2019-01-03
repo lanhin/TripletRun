@@ -331,6 +331,26 @@ namespace triplet{
     return (this->status == READY);
   }
 
+  /** Add a ratio for device type TYPE.
+      A negative ratio means no executable
+      on the corresponding device.
+   */
+  void Node::AddRatio(int type, float ratio){
+    assert(type >= 0);
+    SpeedRatio[type] = ratio;
+  }
+
+  /** Get speed ratio for device type TYPE.
+   */
+  float Node::GetRatio(int type){
+    if(SpeedRatio.find(type) != SpeedRatio.end()){
+      return SpeedRatio[type];
+    }
+
+    return 1.0;
+  }
+
+
 
   // class graph
   Graph::Graph(){
