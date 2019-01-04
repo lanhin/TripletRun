@@ -29,9 +29,15 @@ namespace triplet{
     DONF2, // 2-degree degree of node first
     ADON, // All-level degree of node
     DONFM, // min memory
+
+    /** Light schedulera use the device pick logic:
+	calculate communication between task nodes
+	instead of between devices.
+     */
     DONFL, //L means lite/light
     DONFL2,
     ADONL,
+
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };

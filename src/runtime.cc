@@ -274,12 +274,14 @@ namespace triplet{
 
     for (int index = 0; index < root["devices"].size(); index++){
       std::string id = root["devices"][index].get("id", "-1").asString();
+      std::string type = root["devices"][index].get("type", "-1").asString();
       std::string compute = root["devices"][index].get("compute", "-1").asString();
       std::string RAM = root["devices"][index].get("RAM", "-1").asString();
       std::string bw = root["devices"][index].get("bw", "-1").asString();
       std::string loc = root["devices"][index].get("loc", "-1").asString();
 
       int id1 = std::stoi(id);
+      int type1 = std::stoi(type);
       float compute1 = std::stof(compute, 0);
       float RAM1 = std::stof(RAM);
       float bw1 = std::stof(bw, 0);
@@ -288,7 +290,7 @@ namespace triplet{
 #if 0
       std::cout<<id1<<' '<<compute1<<' '<<RAM1<<' '<<bw1<<' '<<loc1<<std::endl;
 #endif
-      Device *dev = new Device(id1, compute1, RAM1, bw1, loc1);
+      Device *dev = new Device(id1, compute1, RAM1, bw1, loc1, type1);
       TaihuLight[id1] = dev;
       deviceNum ++;
       max_devId = std::max(max_devId, id1);
@@ -1383,6 +1385,11 @@ namespace triplet{
      */
     case PRIORITY:
       for (auto& it: TaihuLight){
+	if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
+	  //The task is not executable on the device
+	  continue;
+	}
+
 	if((nd->GetDataDmd()) <= (it.second)->GetFreeRAM() + ZERO_POSITIVE){
 	  float tmpExeTime = CalcExecutionTime(*nd, *(it.second));
 	  if (exeTime < 0.0){
@@ -1401,6 +1408,10 @@ namespace triplet{
     case RR:
       for (int i = RRCounter+1; i<TaihuLight.size(); i++){
 	Device * tmpDev = TaihuLight[i];
+	if(nd->GetRatio(tmpDev->GetType()) < ZERO_NEGATIVE){
+	  //The task is not executable on the device
+	  continue;
+	}
 	if ( (nd->GetDataDmd()) <= tmpDev->GetFreeRAM() ){
 	  dev = tmpDev;
 	  RRCounter = i;
@@ -1410,6 +1421,10 @@ namespace triplet{
       if (dev == NULL){// Haven't found a good device
 	for (int i = 0; i<=RRCounter; i++){
 	  Device * tmpDev = TaihuLight[i];
+	  if(nd->GetRatio(tmpDev->GetType()) < ZERO_NEGATIVE){
+	    //The task is not executable on the device
+	    continue;
+	  }
 	  if ( (nd->GetDataDmd())<=tmpDev->GetFreeRAM() ){
 	    dev = tmpDev;
 	    RRCounter = i;
@@ -1433,8 +1448,13 @@ namespace triplet{
       float dv = nd->GetPriorityCPOP() - this->absCP;
       if(InnerScheduler == CPOP && dv >= ZERO_NEGATIVE && dv <= ZERO_POSITIVE){
 	dev = TaihuLight[this->max_computeDevId];
-	if( (nd->GetDataDmd()) > dev->GetFreeRAM() + ZERO_POSITIVE ){
+	if( (nd->GetDataDmd()) > dev->GetFreeRAM() + ZERO_POSITIVE || nd->GetRatio(dev->GetType()) < ZERO_NEGATIVE){
 	  for (auto& it: TaihuLight){
+	    if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
+	      //The task is not executable on the device
+	      continue;
+	    }
+
 	    if((nd->GetDataDmd()) < (it.second)->GetFreeRAM() + ZERO_NEGATIVE){
 	      dev = it.second;
 	      break;
@@ -1474,12 +1494,20 @@ namespace triplet{
 	  continue;
 	  }*/
 
-	float w = nd->GetCompDmd() / (it.second)->GetCompPower();
+	if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
+	  //The task is not executable on the device
+	  continue;
+	}
+
+	float w = nd->GetCompDmd() / (it.second)->GetCompPower() / nd->GetRatio((it.second)->GetType());
 
 	// 2. Calculate EST by traversing all the pred(ndId)
 	float EST = 0;
 	float tmpEST;
-	// TODO: The logic below can be replaced by CalcTransmissionTime()
+	/* The logic below is different from that in CalcTransmissionTime()
+	   since CalcTransmissionTime() considers the communication between
+	   devices instead of tasks.
+	 */
 	for (auto& pred : nd->input){
 	  Node* predNd = global_graph.GetNode(pred);
 	  if (predNd->GetOccupied() == it.first || (predNd->GetInNum() == 0 && this->ETD) ){
@@ -1564,7 +1592,12 @@ namespace triplet{
 	  continue;
 	}
 
-	float w = nd->GetCompDmd() / (it.second)->GetCompPower();
+	if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
+	  //The task is not executable on the device
+	  continue;
+	}
+
+	float w = nd->GetCompDmd() / (it.second)->GetCompPower() / nd->GetRatio((it.second)->GetType());
 
 	// 2. Calculate EST by traversing all the pred(ndId)
 	float ct;
@@ -1619,7 +1652,11 @@ namespace triplet{
 	    continue;
 	  }
 
-	  float w = nd->GetCompDmd() / (it.second)->GetCompPower();
+	  if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
+	    //The task is not executable on the device
+	    continue;
+	  }
+	  float w = nd->GetCompDmd() / (it.second)->GetCompPower() / nd->GetRatio((it.second)->GetType());
 
 	  // 2. Calculate EST by traversing all the pred(ndId)
 	  float EST = 0;
@@ -1827,7 +1864,8 @@ namespace triplet{
     float calc_time, data_time;
 
     //1. calculation time
-    calc_time = nd.GetCompDmd() / dev.GetCompPower();
+    assert(nd.GetRatio(dev.GetType()) > ZERO_POSITIVE);
+    calc_time = nd.GetCompDmd() / dev.GetCompPower() / nd.GetRatio(dev.GetType());
 
     //2. data access time
     data_time = std::max(nd.GetDataDmd(), (float)0.0) / dev.GetBw();
