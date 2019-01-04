@@ -65,8 +65,6 @@ TEST(RuntimeTest, BasicOperations){
 
   gr.GetNode(0)->SetOccupied(3);
   EXPECT_EQ(rt.DevicePick(2)->GetId(), 3);
-
-  EXPECT_EQ(rt.DevicePick(1)->GetId(), 0);
 }
 
 
