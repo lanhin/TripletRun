@@ -19,6 +19,10 @@ namespace triplet{
   //Class Runtime
   Runtime::Runtime(){
     ETD = false;
+    max_step = 0;
+    total_step = 1;
+    step_done = -1;
+    issue_width = 1;
     global_timer = 0.0;
     scheduler_ava_time = 0.0;
     scheduler_mean_cost = 0.0;
@@ -441,6 +445,28 @@ namespace triplet{
     }
 
     log_end("Runtime initialization.");
+  }
+
+  /** Set the total_step value.
+   */
+  void Runtime::SetStep(int step){
+    assert(step >=1);
+    this->total_step = step;
+#ifdef DEBUG
+    std::cout<<"Set total_step: "<<step<<std::endl;
+    std::cout<<"Check total_step: "<<this->total_step<<std::endl;
+#endif
+  }
+
+  /** Set issue_width value.
+   */
+  void Runtime::SetIssueWidth(int width){
+    assert(width >= 1);
+    this->issue_width = width;
+#ifdef DEBUG
+    std::cout<<"Set issue_width: "<<width<<std::endl;
+    std::cout<<"Check issue_width: "<<this->issue_width<<std::endl;
+#endif
   }
 
   /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
@@ -889,13 +915,45 @@ namespace triplet{
       std::map<int, float>::iterator it = execution_queue.begin();
       for (; it != execution_queue.end();){
 	if (it->second <= (global_timer + ZERO_POSITIVE)){
-	  
-	  // Set free the corresponding device
+
 	  Node* nd = global_graph.GetNode(it->first);
+
+	  // Check if the task can be committed
+	  bool commitable = true;
+	  std::set<int>::iterator ndit;
+	  for (ndit = nd->output.begin(); ndit != nd->output.end(); ndit ++){
+	    Node* tmpNd = global_graph.GetNode(*ndit);
+	    if(tmpNd->GetStep() > nd->GetStep()){
+	      // An error detected
+	      commitable = false;
+	      log_error("Succ task's step is larger than its pred task.");
+	      exit(-1);
+	    }else if(tmpNd->GetStep() < nd->GetStep() &&
+		     (tmpNd->GetStatus() == INIT ||
+		      tmpNd->GetStatus() == READY ||
+		      tmpNd->GetStatus() == RUNNING ||
+		      tmpNd->GetStatus() == FINISHED)){
+	      commitable = false;
+	    }
+	  }
+	  if(!commitable){
+	    //The task cannot be removed from execution queue
+	    //Update execution queue item
+#ifdef DEBUG
+	    std::cout<<"Update "<<it->first<<"'s second from "<<it->second;
+#endif
+	    it->second = CalcNearestFinishTime(it->second + ZERO_POSITIVE);
+#ifdef DEBUG
+	    std::cout<<" to "<<it->second<<std::endl;
+#endif
+	    it++;
+	    continue;
+	  }
 
 	  // Record cpath computation cost summary
 	  this->max_cpath_cc = std::max(this->max_cpath_cc, nd->GetCpathCC());
 
+	  // Set free the corresponding device
 	  int devId = nd->GetOccupied();
 
 	  // Set the finished_tasks properly
@@ -915,8 +973,15 @@ namespace triplet{
 	  running_history[nd->GetId()] = devId;
 
 	  // update pending list and ready queue and success nodes' level
-	  std::set<int>::iterator ndit;
 	  for (ndit = nd->output.begin(); ndit != nd->output.end(); ndit ++){
+	    if(global_graph.GetNode(*ndit)->GetStep() < nd->GetStep()){
+	      // In a pipeline, only one step difference is permitted
+	      assert(nd->GetStep() ==
+		     global_graph.GetNode(*ndit)->GetStep() + 1);
+	      // Reset ndit's pending number then update its step
+	      pending_list[*ndit] = global_graph.GetNode(*ndit)->GetInNum();
+	      global_graph.GetNode(*ndit)->SetStep(nd->GetStep());
+	    }
 	    int pendingNum = pending_list[*ndit];
 	    pendingNum --;
 #ifdef DEBUG
@@ -935,12 +1000,47 @@ namespace triplet{
 	      //Record the current time
 	      global_graph.GetNode(*ndit)->SetWaitTime(this->global_timer);
 	    }
-	    global_graph.GetNode(*ndit)->SetLevel(nd->GetLevel() +1);
+	    if(nd->GetStep() == 0){
+	      global_graph.GetNode(*ndit)->SetLevel(nd->GetLevel() + 1);
+	    }
 	  }
 
 	  // erase the task from execution_queue
 	  execution_queue.erase(it++);
 	  nd->SetStatus(FINISHED);
+
+	  // Check and set the status of the pred tasks
+	  for (auto& it : nd->input){
+	    Node* input_nd = global_graph.GetNode(it);
+	    if(input_nd->GetStep() == nd->GetStep() &&
+	       input_nd->GetStatus() == FINISHED){
+	      int num_finished_succ = 0;
+	      for (auto& innerit : input_nd->output){
+		if(global_graph.GetNode(innerit)->GetStatus() == FINISHED ||
+		   global_graph.GetNode(innerit)->GetStatus() == REUSEABLE){
+		  num_finished_succ ++;
+		}
+	      }
+	      assert(num_finished_succ <= input_nd->GetOutNum());
+	      if(num_finished_succ == input_nd->GetOutNum()){
+		// All the succ tasks have finished
+		input_nd->SetStatus(REUSEABLE);
+#if 0
+		std::cout<<"Reuse node "<<input_nd->GetId()<<std::endl;
+#endif
+
+	      }
+	    }
+	  }
+
+	  //check for sink node
+	  if(nd->GetId() == global_graph.GetSinkId()){
+	    nd->SetStatus(REUSEABLE);
+	    this->step_done ++;
+#if 1
+	    std::cout<<"Sink node "<<nd->GetId()<<" finished, step_done: "<<this->step_done<<std::endl;
+#endif
+	  }
 
 #if 0
 	  std::cout<<"Node "<<it->first<<" finished execution at "<<global_timer<< ". It used device "<<devId<<", status:"<<nd->GetStatus()<<std::endl;
@@ -1023,7 +1123,7 @@ namespace triplet{
 	/** If dev == NULL, re-insert the node into ready_queue,
 	    and then calculate nearest finish time.
 
-	    TODO: dead loop detection.
+	    Dead loop detection:
 	    When no device's free RAM can cover any node's demand
 	    in ready_queue and execution_queue is empty, then a
 	    dead loop is detected.
@@ -1072,10 +1172,15 @@ namespace triplet{
 	//transmission_time = std::max(transmission_time, this->min_transmission_time);
 
 	//Manage memory blocks data structures
-	int block_id = nd->GetId();
+	int block_id = (nd->GetStep() * global_graph.Nodes()) + nd->GetId();
 	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), std::max(nd->GetDataDmd(), (float)0.0), nd->GetOutNum());
 	block->DoAlloc(TaihuLight);
 	// TODO: check if the block id already exists, which is illegal
+	if(BlocksMap.find(block_id) != BlocksMap.end()){
+	  // The memory block already exists.
+	  log_error("Block id "<<block_id<<" already exists");
+	  exit(-1);
+	}
 	BlocksMap[block_id] = block;
 
 	//Check if need to set mem_full_dev
@@ -1095,7 +1200,7 @@ namespace triplet{
 
 	for (std::set<int>::iterator iter = nd->input.begin(); iter != nd->input.end(); iter ++){
 	  Node* input_nd = global_graph.GetNode(*iter);
-	  block_free_queue.push_back(std::pair<int, float>(input_nd->GetId(), (transmission_time + global_timer)));
+	  block_free_queue.push_back(std::pair<int, float>((input_nd->GetStep() * global_graph.Nodes())+input_nd->GetId(), (transmission_time + global_timer)));
 	}
 
 	// Process the execution time
@@ -1143,7 +1248,7 @@ namespace triplet{
 #endif
 #if 1
 	//Debug
-	std::cout<<"Node "<<task_node_id<<" on "<<dev->GetId();
+	std::cout<<"(Step "<<nd->GetStep()<<")"<<" node "<<task_node_id<<" on "<<dev->GetId();
 	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status: "<<nd->GetStatus()<<", wait time:"<<nd->GetWaitTime()<<std::endl;
 #endif
 #if 0
@@ -1151,7 +1256,27 @@ namespace triplet{
 #endif
       }
 
-      /** 3. Update global_timer to the nearest finish time
+      /** 3. Try to add a new iteration.
+       */
+      if((this->max_step < this->total_step - 1) &&
+	 (this->max_step - this->step_done < this->issue_width)){
+	//Check if the source node can be added into ready queue
+	Node* sourceNd = global_graph.GetNode(global_graph.GetSourceId());
+	if(sourceNd->GetStatus() == REUSEABLE){
+	  // Add (the only) source node into ready queue
+	  ready_queue.push_back(sourceNd->GetId());
+	  sourceNd->SetStatus(READY); // Set node's status
+
+	  sourceNd->SetWaitTime(this->global_timer);
+	  sourceNd->SetStep(sourceNd->GetStep() + 1);
+	  this->max_step = sourceNd->GetStep();
+#if 1
+	  std::cout<<"The source node added into ready queue, max_step:"<<this->max_step<<std::endl;
+#endif
+	}
+      }
+
+      /** 4. Update global_timer to the nearest finish time
        */
       global_timer = CalcNearestFinishTime();
 
@@ -1722,12 +1847,15 @@ namespace triplet{
 
   /** Calculate the nearest time that a new decision can be made.
    */
-  float Runtime::CalcNearestFinishTime(){
-    float NearestTime = -1.0;
+  float Runtime::CalcNearestFinishTime(float start){
+    float NearestTime = -0.1;
     std::map<int, float>::iterator ite;
 
     // 1. Search the execution_queue
     for (ite = execution_queue.begin(); ite != execution_queue.end(); ite++){
+      if(ite->second < start){
+	continue;
+      }
       if (NearestTime > ite->second || NearestTime < ZERO_NEGATIVE){
 	NearestTime = ite->second;
       }
@@ -1735,14 +1863,19 @@ namespace triplet{
 
     // 2. Search the block_free_queue
     for (auto& ite: block_free_queue){
+      if(ite.second < start){
+	continue;
+      }
       if (NearestTime > ite.second  ||  NearestTime < ZERO_NEGATIVE){
 	NearestTime = ite.second;
       }
     }
 
     // 3. If scheduler_ava_time is larger than global_timer, consider it as well
-    if (this->scheduler_ava_time >= global_timer + ZERO_POSITIVE){
-      if (NearestTime > this->scheduler_ava_time  ||  NearestTime < ZERO_NEGATIVE){
+    if (this->scheduler_ava_time >= global_timer + ZERO_POSITIVE &&
+	this->scheduler_ava_time > start){
+      if (NearestTime > this->scheduler_ava_time  ||
+	  NearestTime < ZERO_NEGATIVE){
 	NearestTime = this->scheduler_ava_time;
       }
     }
@@ -2124,7 +2257,7 @@ namespace triplet{
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
-    float speedup = std::max(this->max_cpath_cc, (global_graph.GetTotalCost()/this->max_devCompute))/this->global_timer;
+    float speedup = this->total_step * std::max(this->max_cpath_cc, (global_graph.GetTotalCost()/this->max_devCompute))/this->global_timer;
     std::cout<<"-------- Simulation Report --------"<<std::endl;
     std::cout<<" Graph file: "<<graph_file_name<<std::endl;
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;

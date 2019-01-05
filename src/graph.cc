@@ -18,6 +18,7 @@ namespace triplet{
     AFT = -1.0;
     id_ = id;
     level = -1;
+    step = 0;
     computing_demand = compDmd;
     data_demand = dataDmd;
     data_consume = dataConsume;
@@ -349,6 +350,19 @@ namespace triplet{
     }
 
     return 1.0;
+  }
+
+  /** Set step.
+   */
+  void Node::SetStep(int step){
+    assert(step >= 0);
+    this->step = step;
+  }
+
+  /** Get step.
+   */
+  int Node::GetStep(){
+    return this->step;
   }
 
 

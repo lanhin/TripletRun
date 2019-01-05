@@ -57,16 +57,18 @@ void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
 void Usage(){
   std::cout<<"Usage: ./triplet [options]"<<std::endl;
   std::cout<<"\tOptions:"<<std::endl;
-  std::cout<<"\t-a, --alpha <value>: alpha for DONF2 and ADON policies."<<std::endl;
+  std::cout<<"\t-a, --alpha <float>: alpha for DONF2 and ADON policies."<<std::endl;
   std::cout<<"\t-c, --cluster <clusterfile>: set cluster file."<<std::endl;
-  std::cout<<"\t-d, --dcratio <value>: Data-Centric ratio value."<<std::endl;
-  std::cout<<"\t-f, --devfull <value>: dev_full_threshold"<<std::endl;
+  std::cout<<"\t-d, --dcratio <float>: Data-Centric ratio value."<<std::endl;
+  std::cout<<"\t-f, --devfull <float>: dev_full_threshold"<<std::endl;
   std::cout<<"\t-g, --graph <graphfile>: set graph file."<<std::endl;
   std::cout<<"\t-h, --help: output this usage message."<<std::endl;
-  std::cout<<"\t-l, --loadbalance <value>: load balance threshold task number"<<std::endl;
-  std::cout<<"\t-m, --memfull <value>: mem_full_threshold"<<std::endl;
+  std::cout<<"\t-i, --width <int>: issue width of iteration execution."<<std::endl;
+  std::cout<<"\t-l, --loadbalance <int>: load balance threshold task number."<<std::endl;
+  std::cout<<"\t-m, --memfull <float>: mem_full_threshold."<<std::endl;
+  std::cout<<"\t-p, --steps <int>: total iteration steps to run."<<std::endl;
   std::cout<<"\t-s, --scheduler <policy>: set schduling policy."<<std::endl;
-  std::cout<<"\t-t, --scost <value>: Scheduler cost"<<std::endl<<std::endl;
+  std::cout<<"\t-t, --scost <float>: Scheduler cost"<<std::endl;
   std::cout<<"\t-w, --with-conflicts <true/false>: With conflicts or not when calculating data transmission time."<<std::endl<<std::endl;
 
   std::cout<<"\tScheduler supported: RR, FCFS, SJF, PEFT, HSIP, DONF, DONF2, DONFL, DONFL2, DONFM, HEFT, CPOP, DATACENTRIC, ADON, ADONL"<<std::endl;
@@ -91,6 +93,8 @@ int main(int argc, char *argv[])
   int c;
   float dcratio = 1.0;
   int lb_threshold = 0;
+  int total_steps = 1;
+  int issue_width = 1;
   float scheduler_cost = 0.0;
   float alpha = 0.5;
   float memfull_t = 0.9;
@@ -102,20 +106,22 @@ int main(int argc, char *argv[])
     int option_index = 0;
     static struct option long_options[] = {
       {"alpha", 1, 0, 'a'},
-      {"help", 0, 0, 'h'},
-      {"graph", 1, 0, 'g'},
       {"cluster", 1, 0, 'c'},
       {"dcratio", 1, 0, 'd'},
+      {"devfull", 1, 0, 'f'}, //dev_full_threshold
+      {"graph", 1, 0, 'g'},
+      {"help", 0, 0, 'h'},
+      {"width", 1, 0, 'i'}, //issue_width
       {"loadbalance", 1, 0, 'l'}, // Load balance threshold task number
+      {"memfull", 1, 0, 'm'}, //mem_full_threshold
+      {"steps", 1, 0, 'p'}, // total steps`
       {"scheduler", 1, 0, 's'},
       {"scost", 1, 0, 't'}, // Scheduler cost
-      {"memfull", 1, 0, 'm'}, //mem_full_threshold
-      {"devfull", 1, 0, 'f'}, //dev_full_threshold
       {"with-conflicts", 1, 0, 'w'}, // with conflicts for DONF policies
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "a:c:d:f:g:hl:m:s:t:w:",
+    c = getopt_long(argc, argv, "a:c:d:f:g:hi:l:m:p:s:t:w:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -147,6 +153,10 @@ int main(int argc, char *argv[])
       Usage();
       exit(0);
       break;
+    case 'i':
+      assert(optarg);
+      issue_width = atoi(optarg);
+      break;
     case 'l':
       assert(optarg);
       lb_threshold = atoi(optarg);
@@ -154,6 +164,10 @@ int main(int argc, char *argv[])
     case 'm':
       assert(optarg);
       memfull_t = atof(optarg);
+      break;
+    case 'p':
+      assert(optarg);
+      total_steps = atoi(optarg);
       break;
     case 's':
       assert(optarg);
@@ -253,6 +267,14 @@ int main(int argc, char *argv[])
   STOP_TIMING(cluster);
   std::cout<<" Cluster init time: "<<GET_TIMING(cluster)<<" s"<<std::endl;
 
+  if(total_steps > 1){
+    std::cout<<"total steps set as: "<<total_steps<<std::endl;
+    rt.SetStep(total_steps);
+  }
+  if(issue_width > 1){
+    std::cout<<"issue width set as: "<<issue_width<<std::endl;
+    rt.SetIssueWidth(issue_width);
+  }
   rt.SetAlpha(alpha);
   rt.SetMemFull(memfull_t);
   rt.SetDevFull(devfull_t);

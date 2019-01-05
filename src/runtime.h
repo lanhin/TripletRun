@@ -99,6 +99,14 @@ namespace triplet{
      */
     void InitRuntime(SchedulePolicy sch = PEFT, float dc = 1.0, bool wc = false);
 
+    /** Set the total_step value.
+     */
+    void SetStep(int step);
+
+    /** Set issue_width value.
+     */
+    void SetIssueWidth(int width);
+
     /** Calculate the OCT (Optimistic Cost Table) used in PEFT.
 	This function cannot be moved into class Graph
 	since it involves not only the graph topology but also the cluster configures.
@@ -157,8 +165,10 @@ namespace triplet{
     float CalcMeanLoad();
 
     /** Calculate the nearest time that a new decision can be made.
+	The returned time should be later than START.
      */
-    float CalcNearestFinishTime();
+    float CalcNearestFinishTime(float start = -0.1);
+
 
     /** Calculate the data transmission time if we put nd on dev,
 	withConflicts: consider the available time of the link
@@ -255,6 +265,10 @@ namespace triplet{
     bool ETD; // Entry task duplication flag
     bool with_conflicts; // With communication conflicts in DONF policies.
     SchedulePolicy Scheduler; // define the scheduler
+    int max_step; // The max step stamp in execution. (count from 0)
+    int total_step; // The total steps need to be executed. (count from 1)
+    int step_done; // The max finished step (count from 0, init as -1)
+    int issue_width; // The number of simultaneous iterations
     int deviceNum; // The total number of devices in TaihuLight.
     int deviceInUse; // The number of devices in BUSY status.
     int RRCounter; // Counter for RR policy

@@ -15,7 +15,8 @@ namespace triplet{
     INIT = 1,
     READY,
     RUNNING,
-    FINISHED
+    FINISHED,
+    REUSEABLE
   };
 
   class Node{
@@ -216,6 +217,14 @@ namespace triplet{
      */
     float GetRatio(int type);
 
+    /** Set step.
+     */
+    void SetStep(int step);
+
+    /** Get step.
+     */
+    int GetStep();
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -229,6 +238,7 @@ namespace triplet{
     int id_;
     int occupied_device; // the occupied device id
     int level; // The min levels away from source node
+    int step; // The step stamp of the node
     float computing_demand;
     float data_demand;
     float data_consume;
