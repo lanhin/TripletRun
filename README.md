@@ -45,7 +45,7 @@ make clean
 14. ~~Timing simulation for performance profiling.~~
 15. ~~Scheduling time simulation: use a constant or calculate it on demand.~~
 16. Communication startup costs of processors? Maybe a single value $L$ is better, which make the communication cost as: $c_{i, k} = L + \frac{data_{i, k}}{B_{m, n}}$ where $B$ is the bandwidth.
-17. Iteration execution (a pipeline with step stamp).
+17. ~~Iteration execution (a pipeline with step stamp).~~
 18. Multipul graphs execution at the same time.
 
 ## Develope Notes
@@ -55,3 +55,4 @@ make clean
 - (2018-01-29) HEFT policy.
 - (2018-04) SJF, FCFS, RR policies.
 - (2018-05) Load balance.
+- (2019-01) Iteration execution.
