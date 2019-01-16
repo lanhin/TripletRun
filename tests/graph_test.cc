@@ -46,6 +46,9 @@ TEST(GraphTest, OCCW){
   graph->AddEdge(4, 8, 5);
   graph->AddEdge(5, 8);
 
+  EXPECT_FLOAT_EQ(graph->GetComCost(4, 8), 5);
+  EXPECT_FLOAT_EQ(graph->GetComCost(3, 8), -1);
+
   EXPECT_EQ(graph->Edges(), 9);
   EXPECT_EQ(graph->Nodes(), 7);
 

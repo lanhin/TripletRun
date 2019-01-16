@@ -297,7 +297,7 @@ namespace triplet{
 	Return -1 if there's no weight configure
 	of the edge; return the cost otherwise.
      */
-    int GetComCost(int src, int dst);
+    float GetComCost(int src, int dst);
 
     /** Calculate Out-degree Communication Cost Weight (OCCW) of a graph node.
      */
@@ -364,7 +364,7 @@ namespace triplet{
     float total_memory_cost; //Summary of memory cost
     float total_edge_weight; //Summary of edge weight
 
-    std::map<std::pair<int ,int>, int> comCostMap;  //Communication cost map
+    std::map<std::pair<int ,int>, float> comCostMap;  //Communication cost map
   };
 }
 

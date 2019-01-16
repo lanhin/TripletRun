@@ -1934,7 +1934,7 @@ namespace triplet{
 	// There's not an entry, create one
 	TransSize[input_dev_id] = 0.0;
       }
-      if ( (global_graph.GetComCost( *iter, nd.GetId() )) >= 0 ) {
+      if ( (global_graph.GetComCost( *iter, nd.GetId() )) >= ZERO_POSITIVE ) {
 	// The edge has a weight
 	TransSize[input_dev_id] += global_graph.GetComCost( *iter, nd.GetId() );
       }else{

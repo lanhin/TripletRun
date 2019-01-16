@@ -481,11 +481,13 @@ namespace triplet{
       Return -1 if there's no weight configure
       of the edge; return the cost otherwise.
   */
-  int Graph::GetComCost(int src, int dst){
+  float Graph::GetComCost(int src, int dst){
     // TODO: Need to check if the key exists?
-    int cc = comCostMap[std::make_pair(src, dst)];
-
-    return cc;
+    if(comCostMap.find(std::make_pair(src, dst)) != comCostMap.end()){
+    return comCostMap[std::make_pair(src, dst)];
+    }else{
+      return -1.0;
+    }
   }
 
   /** Calculate Out-degree Communication Cost Weight (OCCW) of a graph node.
@@ -495,7 +497,7 @@ namespace triplet{
 
     float occw = 0;
     for (auto& it : nd->output){
-      if ( GetComCost(ndId, it) >= 0 ){
+      if ( GetComCost(ndId, it) >= ZERO_POSITIVE ){
 	occw += GetComCost(ndId, it);
       }else{
 	Node* ndOut = GetNode(it);
