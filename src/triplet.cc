@@ -76,10 +76,11 @@ void Usage(){
 
 int main(int argc, char *argv[])
 {
+  std::string version = "TripletRun v0.0.1 alpha";
   DECLARE_TIMING(triplet);
   START_TIMING(triplet);
   // Start information
-  std::cout<<"TripletRun 0.0.1 alpha"<<std::endl;
+  std::cout<<version<<std::endl;
   time_t now = time(0);
   char* dt = ctime(&now);
   std::cout<<dt<<std::endl;
@@ -241,7 +242,8 @@ int main(int argc, char *argv[])
       }
       break;
     default:
-      std::cout<<"Option processing error!"<<std::endl;
+      std::cout<<"Option processing error! optarg:"<<optarg<<std::endl;
+      exit(-1);
     }
   }
 

@@ -1200,7 +1200,7 @@ namespace triplet{
 
 	for (std::set<int>::iterator iter = nd->input.begin(); iter != nd->input.end(); iter ++){
 	  Node* input_nd = global_graph.GetNode(*iter);
-	  block_free_queue.push_back(std::pair<int, float>((input_nd->GetStep() * global_graph.Nodes())+input_nd->GetId(), (transmission_time + global_timer)));
+	  block_free_queue.push_back(std::pair<int, float>((nd->GetStep() * global_graph.Nodes())+input_nd->GetId(), (transmission_time + global_timer)));
 	}
 
 	// Process the execution time
@@ -1853,7 +1853,7 @@ namespace triplet{
 
     // 1. Search the execution_queue
     for (ite = execution_queue.begin(); ite != execution_queue.end(); ite++){
-      if(ite->second < start){
+      if(ite->second <= start){
 	continue;
       }
       if (NearestTime > ite->second || NearestTime < ZERO_NEGATIVE){
@@ -2277,6 +2277,7 @@ namespace triplet{
     std::cout<<" Speedup: "<<speedup<<std::endl;
     std::cout<<" Efficiency: "<<speedup / this->deviceNum<<std::endl;
     std::cout<<" SLR: "<<(this->global_timer/this->max_cpath_cc)<<std::endl;
+    std::cout<<" SLR_its: "<<(this->global_timer/this->max_cpath_cc/this->total_step)<<std::endl;
     std::cout<<" Min free RAM size: "<<this->min_free_mem<<std::endl;
 
     int devId, tasks;
