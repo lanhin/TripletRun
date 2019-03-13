@@ -75,7 +75,7 @@ namespace triplet{
     for(; it != TaihuLight.end(); it++){
       delete it->second;
     }
-    
+
     TaihuLight.clear();
     TaihuLightNetwork.Clear();
     global_graph.Clear();
@@ -264,7 +264,7 @@ namespace triplet{
       std::cout<<"The json file "<<clusterFile<<" doesn't exist!"<<std::endl;
       return;
     }
-    
+
     std::ifstream jsondoc(clusterFile, std::ifstream::binary);
 
     bool parsingStatusOK = Json::parseFromStream(reader, jsondoc, &root, &errs);
@@ -883,7 +883,7 @@ namespace triplet{
     // Execute until all three queues/lists are empty
     while (!ready_queue.empty() || !execution_queue.empty() || !block_free_queue.empty()) {
       /** 0. if a memory block's refer number can be decreased
-          decrease it and check if we need to free the block.
+	  decrease it and check if we need to free the block.
       */
       for (int i=block_free_queue.size()-1; i>=0; i--){
 	auto& it = block_free_queue[i];
@@ -2309,6 +2309,17 @@ namespace triplet{
     std::cout<<"\tDevice pick time: "<<this->device_pick_time<<" s"<<std::endl;
     std::cout<<"-----------------------------------"<<std::endl;
 
+    std::cout<<"-------Running History-------"<<std::endl;
+    FILE* fp = fopen("dev_mapping", "w+");
+    if(fp == NULL){
+      exit(-1);
+    }else{
+      for(auto i : running_history){
+	std::cout<<i.first<<","<<i.second<<std::endl;
+	fprintf(fp, "%d,%d\n", i.first, i.second);
+      }
+    }
+    std::cout<<"-----------------------------------"<<std::endl;
   }
 
   /** Return the global_graph.
@@ -2347,7 +2358,7 @@ namespace triplet{
   }
 
 
-  
+
   // Class MemoryBlock
   // TODO: Add unit test for MemoryBlock and remove the DEBUG blocks.
   MemoryBlock::MemoryBlock()
