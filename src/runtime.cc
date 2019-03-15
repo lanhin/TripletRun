@@ -119,7 +119,9 @@ namespace triplet{
       std::string dataDemand = root["nodes"][index].get("dataDmd", "1.0").asString();
       std::string dataConsume = root["nodes"][index].get("c", "-1.0").asString();
       std::string dataGenerate = root["nodes"][index].get("g", "-1.0").asString();
+      std::string loc = root["nodes"][index].get("loc", "-1").asString();
       int id1 = std::stoi(id);
+      int loc1 = std::stoi(loc);
       float comDmd1 = std::stof(computeDemand);
       float dataDmd1 = std::stof(dataDemand);
       float dataConsume1 = std::stof(dataConsume);
@@ -128,7 +130,7 @@ namespace triplet{
       if (comDmd1 < 1){
 	comDmd1 = 0.1;
       }
-      global_graph.AddNode(id1, comDmd1, dataDmd1, dataConsume1, dataGenerate1);
+      global_graph.AddNode(id1, comDmd1, dataDmd1, dataConsume1, dataGenerate1, loc1);
       idset.insert(id1);
 
 #if 0
@@ -1501,14 +1503,22 @@ namespace triplet{
 
     Node * nd = global_graph.GetNode(ndId);
     Device * dev = NULL;
-    float exeTime = -1.0;
+
+    if(nd->Loc() != -1){
+      std::cout<<"Nd has loc value:"<<nd->GetId()<<" with "<<nd->Loc()<<std::endl;
+      assert(running_history.find(nd->Loc()) != running_history.end());
+      dev = TaihuLight[running_history[nd->Loc()]];
+      return dev;
+    }
+
     switch(InnerScheduler){
     case UNKNOWN:
       break;
 
     /** Actually this is a very basic logic, try to use the EFT way.
      */
-    case PRIORITY:
+    case PRIORITY:{
+      float exeTime = -1.0;
       for (auto& it: TaihuLight){
 	if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
 	  //The task is not executable on the device
@@ -1528,8 +1538,8 @@ namespace triplet{
 	  }
 	}
       }
+    }
       break;
-
     case RR:
       for (int i = RRCounter+1; i<TaihuLight.size(); i++){
 	Device * tmpDev = TaihuLight[i];
@@ -2315,7 +2325,7 @@ namespace triplet{
       exit(-1);
     }else{
       for(auto i : running_history){
-	std::cout<<i.first<<","<<i.second<<std::endl;
+	//std::cout<<i.first<<","<<i.second<<std::endl;
 	fprintf(fp, "%d,%d\n", i.first, i.second);
       }
     }

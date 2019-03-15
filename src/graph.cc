@@ -136,7 +136,7 @@ namespace triplet{
    */
   float Node::GetCompDmd(){
     return computing_demand;
-  }  
+  }
 
   /** Get data demand of the node.
    */
@@ -365,6 +365,18 @@ namespace triplet{
     return this->step;
   }
 
+  /** Set "@loc" info of the node.
+   */
+  void Node::SetLoc(int location){
+    this->loc = location;
+  }
+
+  /** Get loc info.
+   */
+  int Node::Loc(){
+    return this->loc;
+  }
+
 
 
   // class graph
@@ -408,17 +420,18 @@ namespace triplet{
       comDmd: computation demand
       dataDmd: data demand
   */
-  void Graph::AddNode(int id, float comDmd, float dataDmd, float dataConsume, float dataGenerate){
+  void Graph::AddNode(int id, float comDmd, float dataDmd, float dataConsume, float dataGenerate, int location){
     assert(id >= 0);
     assert(comDmd > 0.0);
     graphmap::iterator it;
     it = graph_.find(id);
     assert(it == graph_.end()); //Error: the node has already created
-    
+
     Node * node = new Node(id, comDmd, dataDmd, dataConsume, dataGenerate);
     //node->SetId(id);
     //node->SetCompDmd(comDmd);
     //node->SetDataDmd(dataDmd);
+    node->SetLoc(location);
     graph_[id] = node;
     numNode++;
     maxNode = std::max(maxNode, id);

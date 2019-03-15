@@ -225,6 +225,14 @@ namespace triplet{
      */
     int GetStep();
 
+    /** Set "@loc" info of the node.
+     */
+    void SetLoc(int location);
+
+    /** Get loc info.
+     */
+    int Loc();
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -232,13 +240,14 @@ namespace triplet{
     /** The id set of the pred nodes.
      */
     nodeset input;
-    
+
   protected:
     NodeStatus status; //INIT, READY, RUNNING and FINISHED
     int id_;
     int occupied_device; // the occupied device id
     int level; // The min levels away from source node
     int step; // The step stamp of the node
+    int loc;
     float computing_demand;
     float data_demand;
     float data_consume;
@@ -274,7 +283,7 @@ namespace triplet{
 	dataDmd: data demand
      */
     void AddNode(int id);
-    void AddNode(int id, float comDmd, float dataDmd, float dataConsume = -1.0, float dataGenerate = -1.0);
+    void AddNode(int id, float comDmd, float dataDmd, float dataConsume = -1.0, float dataGenerate = -1.0, int location = -1);
 
     /** Add an edge from src to dst.
 	Also give the communication cost if need.
