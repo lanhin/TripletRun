@@ -892,7 +892,7 @@ namespace triplet{
 	if (it.second <= (global_timer + ZERO_POSITIVE)){
 	  MemoryBlock * blk_pointer = BlocksMap[it.first];
 	  if ( (blk_pointer->DecRefers()) <= 0 ){ // do the free
-	    blk_pointer->DoFree(TaihuLight);
+	    //blk_pointer->DoFree(TaihuLight);
 
 	    //Check if need to set mem_full_dev
 	    Device* dv = TaihuLight[blk_pointer->DeviceLocation()];
@@ -1251,7 +1251,7 @@ namespace triplet{
 #if 1
 	//Debug
 	std::cout<<"(Step "<<nd->GetStep()<<")"<<" node "<<task_node_id<<" on "<<dev->GetId();
-	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status: "<<nd->GetStatus()<<", wait time:"<<nd->GetWaitTime()<<std::endl;
+	std::cout<<" at "<<global_timer<<", trans "<<transmission_time<<", exe "<<execution_time<<", finish "<<nd->GetAFT()<<", status: "<<nd->GetStatus()<<", wait time:"<<nd->GetWaitTime()<<", free RAM:"<<dev->GetFreeRAM()<<std::endl;
 #endif
 #if 0
 	std::cout<<"Device ava time updated to: "<<dev->GetAvaTime()<<"s, Node AFT updated to: "<<nd->GetAFT()<<std::endl;
@@ -1481,6 +1481,21 @@ namespace triplet{
     }
 
     return taskIdx;
+  }
+
+  /** Calculate the memory demand for node nd on device dev.
+   */
+  float CalcMemDmd(Node * nd, Device * dev){
+    float dmd = 0;
+    dmd = std::max(nd->GetDataDmd(), nd->GetDataGenerate());
+    for (auto& pred : nd->input){
+      Node* predNd = global_graph.GetNode(pred);
+      if(predNd->GetOccupied() == dev->GetId()){
+	dmd -= predNd->GetDataGenerate();
+      }
+    }
+    dmd = std::max(dmd, 1.0f);
+    return dmd;
   }
 
   /** Pick a free device according to the task requirements and
@@ -2011,7 +2026,9 @@ namespace triplet{
     calc_time = nd.GetCompDmd() / dev.GetCompPower() / nd.GetRatio(dev.GetType());
 
     //2. data access time
-    data_time = std::max(nd.GetDataDmd(), (float)0.0) / dev.GetBw();
+    data_time = std::max(nd.GetDataDmd(), nd.GetDataGenerate()) / dev.GetBw();
+
+    data_time = std::max(data_time, (float)0.0);
 
     return std::max(calc_time, data_time);
   }

@@ -155,6 +155,10 @@ namespace triplet{
     */
     int TaskPick(SchedulePolicy sch = UNKNOWN);
 
+    /** Calculate the memory demand for node nd on device dev.
+     */
+    float CalcMemDmd(Node * nd, Device * dev);
+
     /** Pick a free device according to the task requirements and
 	scheduling policy.
     */
