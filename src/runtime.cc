@@ -126,6 +126,7 @@ namespace triplet{
       float dataDmd1 = std::stof(dataDemand);
       float dataConsume1 = std::stof(dataConsume);
       float dataGenerate1 = std::stof(dataGenerate);
+      dataDmd1 = std::max(dataDmd1, dataGenerate1);
 
       if (comDmd1 < 1){
 	comDmd1 = 0.1;
@@ -1175,7 +1176,7 @@ namespace triplet{
 
 	//Manage memory blocks data structures
 	int block_id = (nd->GetStep() * global_graph.Nodes()) + nd->GetId();
-	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), std::max(nd->GetDataDmd(), (float)0.0), nd->GetOutNum());
+	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), std::max(CalcMemDmd(nd, dev),(float)0.0), nd->GetOutNum());
 	block->DoAlloc(TaihuLight);
 	// TODO: check if the block id already exists, which is illegal
 	if(BlocksMap.find(block_id) != BlocksMap.end()){
@@ -1485,7 +1486,7 @@ namespace triplet{
 
   /** Calculate the memory demand for node nd on device dev.
    */
-  float CalcMemDmd(Node * nd, Device * dev){
+  float Runtime::CalcMemDmd(Node * nd, Device * dev){
     float dmd = 0;
     dmd = std::max(nd->GetDataDmd(), nd->GetDataGenerate());
     for (auto& pred : nd->input){
@@ -1494,7 +1495,7 @@ namespace triplet{
 	dmd -= predNd->GetDataGenerate();
       }
     }
-    dmd = std::max(dmd, 1.0f);
+    dmd = std::max(dmd, 0.5f);
     return dmd;
   }
 
@@ -1540,7 +1541,8 @@ namespace triplet{
 	  continue;
 	}
 
-	if((nd->GetDataDmd()) <= (it.second)->GetFreeRAM() + ZERO_POSITIVE){
+	//TODO: speed ratio?
+	if(CalcMemDmd(nd, it.second) <= (it.second)->GetFreeRAM() + ZERO_POSITIVE){
 	  float tmpExeTime = CalcExecutionTime(*nd, *(it.second));
 	  if (exeTime < 0.0){
 	    exeTime = tmpExeTime;
@@ -1562,7 +1564,7 @@ namespace triplet{
 	  //The task is not executable on the device
 	  continue;
 	}
-	if ( (nd->GetDataDmd()) <= tmpDev->GetFreeRAM() ){
+	if ( CalcMemDmd(nd, tmpDev) <= tmpDev->GetFreeRAM() + ZERO_POSITIVE){
 	  dev = tmpDev;
 	  RRCounter = i;
 	  break;
@@ -1575,7 +1577,7 @@ namespace triplet{
 	    //The task is not executable on the device
 	    continue;
 	  }
-	  if ( (nd->GetDataDmd())<=tmpDev->GetFreeRAM() ){
+	  if ( CalcMemDmd(nd, tmpDev) <= tmpDev->GetFreeRAM() + ZERO_POSITIVE){
 	    dev = tmpDev;
 	    RRCounter = i;
 	    break;
@@ -1598,14 +1600,14 @@ namespace triplet{
       float dv = nd->GetPriorityCPOP() - this->absCP;
       if(InnerScheduler == CPOP && dv >= ZERO_NEGATIVE && dv <= ZERO_POSITIVE){
 	dev = TaihuLight[this->max_computeDevId];
-	if( (nd->GetDataDmd()) > dev->GetFreeRAM() + ZERO_POSITIVE || nd->GetRatio(dev->GetType()) < ZERO_NEGATIVE){
+	if(CalcMemDmd(nd, dev) > dev->GetFreeRAM() + ZERO_POSITIVE || nd->GetRatio(dev->GetType()) < ZERO_NEGATIVE){
 	  for (auto& it: TaihuLight){
 	    if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
 	      //The task is not executable on the device
 	      continue;
 	    }
 
-	    if((nd->GetDataDmd()) < (it.second)->GetFreeRAM() + ZERO_NEGATIVE){
+	    if(CalcMemDmd(nd, it.second) < (it.second)->GetFreeRAM() + ZERO_NEGATIVE){
 	      dev = it.second;
 	      break;
 	    }
@@ -1625,7 +1627,7 @@ namespace triplet{
       float min_OEFT = -1;
       // 1.Traverse all the devices
       for (auto& it: TaihuLight){
-	if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
+	if( CalcMemDmd(nd, it.second) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
 	  // The free memory of the device is too little, skip
 	  continue;
 	}
@@ -1737,7 +1739,7 @@ namespace triplet{
       float min_EFT = -1;
       // 1.Traverse all the devices
       for (auto& it: TaihuLight){
-	if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
+	if( CalcMemDmd(nd, it.second) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
 	  // The free memory of the device is too little, skip
 	  continue;
 	}
@@ -1797,7 +1799,7 @@ namespace triplet{
       }else{// pick according to EFT
 	float min_OEFT = -1;
 	for (auto& it: TaihuLight){
-	  if( (nd->GetDataDmd()) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
+	  if( CalcMemDmd(nd, it.second) > (it.second)->GetFreeRAM() + ZERO_POSITIVE ){
 	    // The free memory of the device is too little, skip
 	    continue;
 	  }
