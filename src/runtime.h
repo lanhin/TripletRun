@@ -298,6 +298,7 @@ namespace triplet{
     float dev_full_threshold; // Overall device memory full mode threshold
     float max_devCompute; // Max device compute power
     float max_cpath_cc; // Record the critical path computatin cost summary
+    float max_cpath_cc_mem; // Record the critical path computatin cost summary with memory access cost
     float absCP; // The |CP| value used in device selection phase of CPOP policy
     float min_execution_time; // The min execution time of a task
     float min_transmission_time; // The min transmission time of tasks

@@ -153,9 +153,19 @@ namespace triplet{
      */
     float GetCpathCC();
 
+    /** Get the critical path computation cost (with memory access)
+	value of this node.
+     */
+    float CpathCCMem();
+
     /** Set the critical path computation cost value of this node.
      */
     void SetCpathCC(float cc);
+
+    /** Set the critical path computation cost (with memory access)
+	value of this node.
+     */
+    void SetCpathCCMem(float cc);
 
     /** Get the rank_d used in CPOP policy.
      */
@@ -233,6 +243,14 @@ namespace triplet{
      */
     int Loc();
 
+    /** Set mem_alloced
+     */
+    void SetMemAlloc(float mem);
+
+    /** Get mem_alloced
+     */
+    float MemAlloc();
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -252,6 +270,7 @@ namespace triplet{
     float data_demand;
     float data_consume;
     float data_generate;
+    float mem_alloced;
 
     /** mean_weight: average execution time of the node (on all devices)
 	Note: this is different from the computing_demand.
@@ -266,6 +285,7 @@ namespace triplet{
     float AFT; // The actual finish time of this node
     float wait_time; // The waiting time of the node
     float cpath_cc; // Critical path computation cost value
+    float cpath_cc_mem; // Critical path computation cost value (with memory)
     float NDON; // Normalized degree of node
     float rank_ADON; // Rank used in ADON policy
 
@@ -330,6 +350,11 @@ namespace triplet{
      */
     void CalcCpathCC(int ndId, float max_devCompute, float min_execution_time);
 
+    /** Calculate the max device compute power of node ndId, with memory access time.
+     */
+    void CalcCpathCCMem(int ndId, float max_devCompute,
+			float max_devBw, float min_execution_time);
+
     /** Get total computation cost.
      */
     float GetTotalCost();
@@ -358,6 +383,10 @@ namespace triplet{
     /** Report the 3 summary value.
      */
     void SummaryReport();
+
+    /** Return total_memory_cost.
+     */
+    float TotalMemAcce();
 
     typedef std::map<int,Node*> graphmap;
   protected:

@@ -12,7 +12,7 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1) {}
+    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), cpath_cc_mem(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1), mem_alloced(0.0) {}
   Node::Node(int id, float compDmd, float dataDmd, float dataConsume, float dataGenerate){
     status = INIT;
     AFT = -1.0;
@@ -23,6 +23,7 @@ namespace triplet{
     data_demand = dataDmd;
     data_consume = dataConsume;
     data_generate = dataGenerate;
+    mem_alloced = 0.0;
     rank_OCT = 0;
     rank_u_HSIP = -1;
     rank_u_HEFT = -1;
@@ -30,6 +31,7 @@ namespace triplet{
     mean_weight = -1.0;
     wait_time = 0.0;
     cpath_cc = 0.0;
+    cpath_cc_mem = 0.0;
     NDON = 0.0;
     rank_ADON = -1;
     priority_CPOP = 0.0;
@@ -235,12 +237,28 @@ namespace triplet{
     return this->cpath_cc;
   }
 
+  /** Get the critical path computation cost (with memory access)
+      value of this node.
+  */
+  float Node::CpathCCMem(){
+    return this->cpath_cc_mem;
+  }
+
   /** Set the critical path computation cost value of this node.
    */
   void Node::SetCpathCC(float cc){
     assert(cc >= ZERO_NEGATIVE);
     this->cpath_cc = cc;
   }
+
+  /** Set the critical path computation cost (with memory access)
+      value of this node.
+  */
+  void Node::SetCpathCCMem(float cc){
+    assert(cc >= ZERO_NEGATIVE);
+    this->cpath_cc_mem = cc;
+  }
+
 
   /** Get the rank_d used in CPOP policy.
    */
@@ -377,6 +395,18 @@ namespace triplet{
     return this->loc;
   }
 
+  /** Set mem_alloced
+   */
+  void Node::SetMemAlloc(float mem){
+    assert(mem > ZERO_NEGATIVE);
+    this->mem_alloced = mem;
+  }
+
+  /** Get mem_alloced
+   */
+  float Node::MemAlloc(){
+    return this->mem_alloced;
+  }
 
 
   // class graph
@@ -439,6 +469,7 @@ namespace triplet{
     // Record the total computation and memory cost
     total_computation_cost += comDmd;
     total_memory_cost += dataDmd;
+    total_memory_cost += dataGenerate;
   }
 
   /** Add an edge from src to dst.
@@ -574,6 +605,23 @@ namespace triplet{
     nd->SetCpathCC(max_cc);
   }
 
+  /** Calculate the max device compute power of node ndId, with memory access time.
+   */
+  void Graph::CalcCpathCCMem(int ndId, float max_devCompute,
+			float max_devBw, float min_execution_time){
+    Node* nd = GetNode(ndId);
+
+    float max_cc = 0.0;
+    for (auto& it : nd->input) {
+      max_cc = std::max(max_cc, GetNode(it)->CpathCCMem());
+    }
+    max_cc += std::max(nd->GetCompDmd() / max_devCompute, min_execution_time);
+
+    max_cc += std::max((nd->GetDataDmd() + nd->GetDataGenerate()) / max_devBw, 0.0f);
+
+    nd->SetCpathCCMem(max_cc);
+  }
+
   /** Get total computation cost.
    */
   float Graph::GetTotalCost(){
@@ -619,6 +667,12 @@ namespace triplet{
     graph_.clear();
     numEdge = 0;
     numNode = 0;
+  }
+
+  /** Return total_memory_cost.
+   */
+  float Graph::TotalMemAcce(){
+    return this->total_memory_cost;
   }
 
   /** Report the 3 summary value.

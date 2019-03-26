@@ -45,6 +45,7 @@ namespace triplet{
     dev_full_threshold = 0.2;
     max_devCompute = 0.0;
     max_cpath_cc = 0.0;
+    max_cpath_cc_mem = 0.0;
     absCP = 0.0;
     min_execution_time = 0.0;
     min_transmission_time = 0.0;
@@ -441,6 +442,7 @@ namespace triplet{
 
 	// Calculate Cpath computatin cost
 	global_graph.CalcCpathCC(*iter, this->max_devCompute, this->min_execution_time);
+	global_graph.CalcCpathCCMem(*iter, this->max_devCompute, TaihuLight[this->max_computeDevId]->GetBw(), this->min_execution_time);
 
 	//Record the current time
 	global_graph.GetNode(*iter)->SetWaitTime(this->global_timer);
@@ -955,6 +957,7 @@ namespace triplet{
 
 	  // Record cpath computation cost summary
 	  this->max_cpath_cc = std::max(this->max_cpath_cc, nd->GetCpathCC());
+	  this->max_cpath_cc_mem = std::max(this->max_cpath_cc_mem, nd->CpathCCMem());
 
 	  // Set free the corresponding device
 	  int devId = nd->GetOccupied();
@@ -999,6 +1002,7 @@ namespace triplet{
 
 	      // Calculate Cpath computatin cost
 	      global_graph.CalcCpathCC(*ndit, this->max_devCompute, this->min_execution_time);
+	      global_graph.CalcCpathCCMem(*ndit, this->max_devCompute, TaihuLight[this->max_computeDevId]->GetBw(), this->min_execution_time);
 
 	      //Record the current time
 	      global_graph.GetNode(*ndit)->SetWaitTime(this->global_timer);
@@ -1177,6 +1181,7 @@ namespace triplet{
 	//Manage memory blocks data structures
 	int block_id = (nd->GetStep() * global_graph.Nodes()) + nd->GetId();
 	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), std::max(CalcMemDmd(nd, dev),(float)0.0), nd->GetOutNum());
+	nd->SetMemAlloc(std::max(CalcMemDmd(nd, dev), 0.0f));
 	block->DoAlloc(TaihuLight);
 	// TODO: check if the block id already exists, which is illegal
 	if(BlocksMap.find(block_id) != BlocksMap.end()){
@@ -1543,6 +1548,7 @@ namespace triplet{
 
 	//TODO: speed ratio?
 	if(CalcMemDmd(nd, it.second) <= (it.second)->GetFreeRAM() + ZERO_POSITIVE){
+	  //TODO: It is not suitable to call CalcExecutionTime() directly
 	  float tmpExeTime = CalcExecutionTime(*nd, *(it.second));
 	  if (exeTime < 0.0){
 	    exeTime = tmpExeTime;
@@ -1750,6 +1756,8 @@ namespace triplet{
 	}
 
 	float w = nd->GetCompDmd() / (it.second)->GetCompPower() / nd->GetRatio((it.second)->GetType());
+	// Add the memory allocation and access time
+	w += (std::max(nd->GetDataDmd(), nd->GetDataGenerate()) + std::max(CalcMemDmd(nd, it.second), 0.0f)) / (it.second)->GetBw();
 
 	// 2. Calculate EST by traversing all the pred(ndId)
 	float ct;
@@ -2028,11 +2036,13 @@ namespace triplet{
     calc_time = nd.GetCompDmd() / dev.GetCompPower() / nd.GetRatio(dev.GetType());
 
     //2. data access time
-    data_time = std::max(nd.GetDataDmd(), nd.GetDataGenerate()) / dev.GetBw();
+    data_time = (std::max(nd.GetDataDmd(), nd.GetDataGenerate()) +
+		 std::max(nd.MemAlloc(), 0.0f)) / dev.GetBw();
 
     data_time = std::max(data_time, (float)0.0);
 
-    return std::max(calc_time, data_time);
+    //return std::max(calc_time, data_time);
+    return std::max(calc_time + data_time, 0.0f);
   }
 
   /** Get the data size need to be transfered from predId to succId.
@@ -2286,7 +2296,9 @@ namespace triplet{
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
+    std::cout<<"max_cpath_cc: "<<this->max_cpath_cc<<", max_capth_cc_mem: "<<this->max_cpath_cc_mem<<", serial:"<<(global_graph.GetTotalCost()/this->max_devCompute)<<", with mem:"<<(global_graph.GetTotalCost()/this->max_devCompute + global_graph.TotalMemAcce()/TaihuLight[this->max_computeDevId]->GetBw())<<std::endl;
     float speedup = this->total_step * std::max(this->max_cpath_cc, (global_graph.GetTotalCost()/this->max_devCompute))/this->global_timer;
+    float speedup_mem_accounted = this->total_step * std::max(this->max_cpath_cc_mem, (global_graph.GetTotalCost()/this->max_devCompute + global_graph.TotalMemAcce()/TaihuLight[this->max_computeDevId]->GetBw())) / this->global_timer;
     std::cout<<"-------- Simulation Report --------"<<std::endl;
     std::cout<<" Graph file: "<<graph_file_name<<std::endl;
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
@@ -2303,7 +2315,7 @@ namespace triplet{
     std::cout<<" Cpath cost summary: "<<this->max_cpath_cc<<std::endl;
     std::cout<<" Scheduler cost: "<<this->scheduler_mean_cost<<std::endl;
     // Note: This speedup value maybe not so accurate!
-    std::cout<<" Speedup: "<<speedup<<std::endl;
+    std::cout<<" Speedup: "<<speedup<<", "<<speedup_mem_accounted<<"(with mem)"<<std::endl;
     std::cout<<" Efficiency: "<<speedup / this->deviceNum<<std::endl;
     std::cout<<" SLR: "<<(this->global_timer/this->max_cpath_cc)<<std::endl;
     std::cout<<" SLR_its: "<<(this->global_timer/this->max_cpath_cc/this->total_step)<<std::endl;
