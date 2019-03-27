@@ -42,16 +42,21 @@ TEST(RuntimeTest, BasicOperations){
   EXPECT_EQ(gr.GetNode(0)->GetOccupied(), 0);
 
   triplet::Cluster sugon = rt.GetCluster();
+
+#ifdef MEM_OVERLAP
   EXPECT_FLOAT_EQ(sugon[0]->GetAvaTime(), 1.25);
   EXPECT_FLOAT_EQ(sugon[1]->GetAvaTime(), 2.5);
   EXPECT_FLOAT_EQ(sugon[3]->GetAvaTime(), 1.6666667);
+#endif
 
   triplet::Connections mellanox = rt.GetConnections();
   EXPECT_FLOAT_EQ(mellanox.GetMeanBW(), 12);
 
   std::map<int, float> eq = rt.GetExeQueue();
   EXPECT_EQ(eq.size(), 1);
+#ifdef MEM_OVERLAP
   EXPECT_FLOAT_EQ(eq[0], 1.25);
+#endif
 
   std::vector<int> rq = rt.GetReadyQueue();
   EXPECT_EQ(rq.size(), 0);
@@ -78,11 +83,13 @@ TEST(RuntimeTest, MeanWaitTime){
   triplet::Graph gr = rt.GetGraph();
   EXPECT_FLOAT_EQ(gr.GetNode(0)->GetWaitTime(), 0);
   EXPECT_FLOAT_EQ(gr.GetNode(1)->GetWaitTime(), 0);
+#ifdef MEM_OVERLAP
   EXPECT_FLOAT_EQ(gr.GetNode(2)->GetWaitTime(), 0.9375);
   EXPECT_FLOAT_EQ(gr.GetNode(3)->GetWaitTime(), 0.625);
   EXPECT_FLOAT_EQ(gr.GetNode(4)->GetWaitTime(), 0.5);
   EXPECT_FLOAT_EQ(gr.GetNode(5)->GetWaitTime(), 0.625);
   EXPECT_FLOAT_EQ(gr.GetNode(8)->GetWaitTime(), 0.3125);
+#endif
 
   EXPECT_EQ(rt.GetMaxParallel(), 3);
 }
@@ -94,12 +101,16 @@ TEST(RuntimeTest, SchedulerCost){
   rt.InitRuntime(triplet::HSIP);
   rt.SetSchedulerCost(1.0);
   rt.Execute();
-  
+
   triplet::Cluster sugon = rt.GetCluster();
+#ifdef MEM_OVERLAP
   EXPECT_FLOAT_EQ(sugon[0]->GetAvaTime(), 6.875);
+#endif
   EXPECT_FLOAT_EQ(sugon[1]->GetAvaTime(), 0);
+#ifdef MEM_OVERLAP
   EXPECT_FLOAT_EQ(sugon[3]->GetAvaTime(), 0);
-  
+#endif
+
   triplet::Graph gr = rt.GetGraph();
   EXPECT_FLOAT_EQ(gr.GetNode(0)->GetCpathCC(), 1);
   EXPECT_FLOAT_EQ(gr.GetNode(1)->GetCpathCC(), 1.75);
@@ -115,7 +126,7 @@ TEST(RuntimeTest, CPOPRank){
   rt.InitGraph("graph_test.json");
   rt.InitCluster("cluster_test.json");
   rt.InitRuntime(triplet::CPOP);
-  
+
   triplet::Graph gr = rt.GetGraph();
   EXPECT_FLOAT_EQ(gr.GetNode(0)->GetRank_d_CPOP(), 0);
   EXPECT_FLOAT_EQ(gr.GetNode(1)->GetRank_d_CPOP(), 1.75);
@@ -171,6 +182,21 @@ TEST(RuntimeTest, CommunicationConflicts){
   rt.Execute();
 
   triplet::Connections mellanox = rt.GetConnections();
+#ifdef MEM_OVERLAP
   EXPECT_FLOAT_EQ(mellanox.GetConAvaTime(0, 1), 5);
   EXPECT_FLOAT_EQ(mellanox.GetConAvaTime(0, 1, true), 5.375);
+#endif
+}
+
+TEST(RuntimeTest, Lookahead){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test.json");
+  rt.InitCluster("cluster_test2.json");
+  rt.InitRuntime(triplet::RR);
+
+  triplet::Graph gr = rt.GetGraph();
+  triplet::Device** dev;
+  triplet::Node * nd = gr.GetNode(0);
+  float EFT = rt.Lookahead(0, 0, nd, dev);
+
 }
