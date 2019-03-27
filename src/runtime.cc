@@ -1526,7 +1526,7 @@ namespace triplet{
     Device * dev = NULL;
 
     if(nd->Loc() != -1){
-      std::cout<<"Nd has loc value:"<<nd->GetId()<<" with "<<nd->Loc()<<std::endl;
+      //std::cout<<"Nd has loc value:"<<nd->GetId()<<" with "<<nd->Loc()<<std::endl;
       assert(running_history.find(nd->Loc()) != running_history.end());
       dev = TaihuLight[running_history[nd->Loc()]];
       return dev;
@@ -1756,8 +1756,11 @@ namespace triplet{
 	}
 
 	float w = nd->GetCompDmd() / (it.second)->GetCompPower() / nd->GetRatio((it.second)->GetType());
+
+#ifndef MEM_OVERLAP
 	// Add the memory allocation and access time
 	w += (std::max(nd->GetDataDmd(), nd->GetDataGenerate()) + std::max(CalcMemDmd(nd, it.second), 0.0f)) / (it.second)->GetBw();
+#endif
 
 	// 2. Calculate EST by traversing all the pred(ndId)
 	float ct;
@@ -2041,8 +2044,11 @@ namespace triplet{
 
     data_time = std::max(data_time, (float)0.0);
 
-    //return std::max(calc_time, data_time);
+#ifdef MEM_OVERLAP
+    return std::max(calc_time, data_time);
+#else
     return std::max(calc_time + data_time, 0.0f);
+#endif
   }
 
   /** Get the data size need to be transfered from predId to succId.

@@ -9,6 +9,8 @@
 
 #define DEBUG 1
 
+#define MEM_OVERLAP
+
 #define BW_ZERO 1e-5
 #define ZERO_POSITIVE 1e-5
 #define ZERO_NEGATIVE -1e-5

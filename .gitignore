@@ -54,3 +54,13 @@ utils/opfiles
 
 # python import file
 *.pyc
+
+# log files
+*.log
+
+# cscope
+cscope.files
+
+# specific files
+utils/runops.all
+utils/testlogs.err
