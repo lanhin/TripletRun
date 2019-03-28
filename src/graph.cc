@@ -12,7 +12,7 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), cpath_cc_mem(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1), mem_alloced(0.0) {}
+    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), cpath_cc_mem(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1), mem_alloced(0.0), occupied_device(-1) {}
   Node::Node(int id, float compDmd, float dataDmd, float dataConsume, float dataGenerate){
     status = INIT;
     AFT = -1.0;
@@ -35,6 +35,7 @@ namespace triplet{
     NDON = 0.0;
     rank_ADON = -1;
     priority_CPOP = 0.0;
+    occupied_device = -1;
   }
 
   Node::~Node(){
@@ -54,7 +55,7 @@ namespace triplet{
   /** Record which device is occupied by the node.
    */
   void Node::SetOccupied(int id){
-    assert(id >= 0);
+    //assert(id >= 0);
     occupied_device = id;
   }
 
@@ -202,7 +203,7 @@ namespace triplet{
   /** Get actual finish time (AFT) of the node.
    */
   float Node::GetAFT(){
-    assert(this->AFT >= ZERO_NEGATIVE);
+    //assert(this->AFT >= ZERO_NEGATIVE);
     return this->AFT;
   }
 

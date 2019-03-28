@@ -191,12 +191,50 @@ TEST(RuntimeTest, CommunicationConflicts){
 TEST(RuntimeTest, Lookahead){
   triplet::Runtime rt;
   rt.InitGraph("graph_test.json");
-  rt.InitCluster("cluster_test2.json");
+  rt.InitCluster("cluster_test.json");
   rt.InitRuntime(triplet::RR);
 
+  triplet::Cluster sugon = rt.GetCluster();
   triplet::Graph gr = rt.GetGraph();
-  triplet::Device** dev;
+  triplet::Device* dev;
   triplet::Node * nd = gr.GetNode(0);
-  float EFT = rt.Lookahead(0, 0, nd, dev);
+  float EFT = rt.Lookahead(0, 0, nd, &dev);
 
+#ifndef MEM_OVERLAP
+  EXPECT_FLOAT_EQ(EFT, 2.25);
+  EXPECT_EQ((dev)->GetId(), 0);
+  EXPECT_FLOAT_EQ((dev)->GetAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ((dev)->FakeAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetAFT(), -1);
+  EFT = rt.Lookahead(1, 0, nd, &dev);
+  EXPECT_FLOAT_EQ(EFT, 4.020833);
+  EXPECT_EQ((dev)->GetId(), 0);
+  EXPECT_FLOAT_EQ((dev)->FakeAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ(sugon[1]->FakeAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ(sugon[3]->FakeAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetAFT(), -1);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetAFT(), -1);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetAFT(), -1);
+  EXPECT_EQ(gr.GetNode(0)->GetOccupied(), -1);
+  EXPECT_FLOAT_EQ(sugon[0]->GetFreeRAM(), 128);
+
+  EFT = rt.Lookahead(2, 0, nd, &dev);
+  EXPECT_FLOAT_EQ(sugon[0]->GetFreeRAM(), 128);
+  EXPECT_FLOAT_EQ(sugon[1]->GetFreeRAM(), 64);
+  EXPECT_FLOAT_EQ(sugon[3]->GetFreeRAM(), 128);
+  EXPECT_FLOAT_EQ(sugon[0]->FakeAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ(sugon[3]->FakeAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ(sugon[1]->FakeAvaTime(), 0.0);
+  EXPECT_FLOAT_EQ(gr.GetNode(0)->GetAFT(), -1);
+  EXPECT_FLOAT_EQ(gr.GetNode(1)->GetAFT(), -1);
+  EXPECT_FLOAT_EQ(gr.GetNode(2)->GetAFT(), -1);
+  EXPECT_EQ(gr.GetNode(0)->GetOccupied(), -1);
+  EXPECT_EQ(gr.GetNode(1)->GetOccupied(), -1);
+  EXPECT_EQ(gr.GetNode(2)->GetOccupied(), -1);
+  EXPECT_EQ(gr.GetNode(3)->GetOccupied(), -1);
+  EXPECT_EQ(gr.GetNode(4)->GetOccupied(), -1);
+  EXPECT_EQ(gr.GetNode(5)->GetOccupied(), -1);
+  EXPECT_EQ((dev)->GetId(), 3);
+  EXPECT_FLOAT_EQ(EFT, 5.729167);
+#endif
 }

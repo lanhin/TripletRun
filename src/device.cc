@@ -23,14 +23,15 @@ namespace triplet{
       data_trans_time(0.0),
       Allocated_RAM(0),
       DevType(0),
-      available_time(0.0) {}
+      available_time(0.0),
+      fake_available_time(0.0){}
 
   Device::Device(int id, float compute, float RAM, float bw, int loc)
-    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0),DevType(0),available_time(0.0) {
+    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0),DevType(0),available_time(0.0),fake_available_time(0.0) {
     status = FREE;}
 
   Device::Device(int id, float compute, float RAM, float bw, int loc, int type)
-    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0),DevType(type),available_time(0.0) {
+    : id_(id),mem_full(false),computing_power(compute),RAM_size(RAM),bandwidth(bw),location(loc),finished_tasks(0),running_tasks(0),execution_time(0.0),data_trans_time(0.0),Allocated_RAM(0),DevType(type),available_time(0.0),fake_available_time(0.0) {
     status = FREE;}
 
 
@@ -322,6 +323,19 @@ namespace triplet{
     return available_time;
   }
 
+  /** Get fake_available_time
+   */
+  float Device::FakeAvaTime(){
+    return std::max(this->fake_available_time, this->available_time);
+  }
+
+  /** Set fake_available_time
+   */
+  void Device::SetFakeAvaTime(float fat){
+    this->fake_available_time = fat;
+  }
+
+
   /** Set finished_tasks value.
    */
   void Device::SetTasks(int tasks){
@@ -422,7 +436,7 @@ namespace triplet{
     if (src > dst){ //make sure that src < dst
       std::swap(src, dst);
     }
-    
+
     if (BetweenNode){
       NodeConnection[std::pair<int, int>(src, dst)] = bw;
       NodeConnectionAvaTime[std::pair<int, int>(src, dst)] = 0.0;

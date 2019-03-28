@@ -147,6 +147,14 @@ namespace triplet{
      */
     float GetAvaTime();
 
+    /** Get fake_available_time
+     */
+    float FakeAvaTime();
+
+    /** Set fake_available_time
+     */
+    void SetFakeAvaTime(float fat);
+
     /** Set finished_tasks value.
      */
     void SetTasks(int tasks);
@@ -158,7 +166,7 @@ namespace triplet{
     /** Get finished_tasks.
      */
     int GetTasks();
-    
+
     /** Increase running_tasks (by 1).
      */
     void IncreaseLoad(int tasks = 1);
@@ -202,6 +210,7 @@ namespace triplet{
     float execution_time; // The time that the device are calculating
     float data_trans_time; // The time that the device are waiting for input data transmission
     float available_time; // The time that this device will be ready for next task
+    float fake_available_time;
     std::map<float, float> ITS; // Idel time slot
   };
 
@@ -209,7 +218,7 @@ namespace triplet{
   public:
     Connections();
     ~Connections();
-    
+
     typedef std::map<std::pair<int, int>, float> connection;
 
     /**  Add a new link between src and dst

@@ -1496,12 +1496,105 @@ namespace triplet{
     dmd = std::max(nd->GetDataDmd(), nd->GetDataGenerate());
     for (auto& pred : nd->input){
       Node* predNd = global_graph.GetNode(pred);
-      if(predNd->GetOccupied() == dev->GetId()){
+      if(predNd->GetOccupied() == dev->GetId() && predNd->GetDataGenerate() > ZERO_NEGATIVE){
 	dmd -= predNd->GetDataGenerate();
       }
     }
     dmd = std::max(dmd, 0.5f);
     return dmd;
+  }
+
+  /** Lookahead scheme used in Runtime::DevicePick()
+      depth: lookahead levels
+      max_aft: the predicted ready time of Node nd
+      nd: the scheduled node
+      dev: the device on which ndId should be put
+      return: the amount of (EFT - dev->avaTime())
+   */
+  float Runtime::Lookahead(int depth, float max_aft, Node * nd, Device ** dev){
+    float time = -1;
+    float transmission_time, execution_time;
+    if(depth == 0){
+      //This the last level
+      float time_tmp, time_tmp_min = -1;
+      Device * dev_tmp;
+      for(auto & it : TaihuLight) {
+	if(CalcMemDmd(nd, it.second) > (it.second)->GetFreeRAM() + ZERO_POSITIVE){
+	  continue;
+	}
+	transmission_time = CalcTransmissionTime(*nd, *(it.second), true, false);
+	execution_time = CalcExecutionTime(*nd, *(it.second));
+
+	time_tmp = std::max(this->global_timer, max_aft);
+
+	time_tmp += transmission_time;
+	time_tmp = std::max(time_tmp, (it.second)->FakeAvaTime());
+	time_tmp += execution_time;
+
+	if(time_tmp_min < 0.0f || time_tmp_min > time_tmp){
+	  time_tmp_min = time_tmp;
+	  dev_tmp = (it.second);
+	}
+      }
+      *dev = dev_tmp;
+      time = time_tmp_min;// - (dev_tmp->FakeAvaTime());
+      //std::cout<<"Dep 0, put "<<nd->GetId()<<" on "<<dev_tmp->GetId()<<", EFT: "<<time<<std::endl;
+    }else{
+      //This is not the last level
+      float occupied_bak, time_tmp, fakeava_bak, EFT = -1;
+      occupied_bak = nd->GetOccupied();
+      for(auto & it : TaihuLight) {
+	//1. put nd on device it
+	if(CalcMemDmd(nd, it.second) > (it.second)->GetFreeRAM() + ZERO_POSITIVE){
+	  continue;
+	}
+	nd->SetOccupied(it.first);
+	(it.second)->MemAlloc(CalcMemDmd(nd, it.second));
+
+	transmission_time = CalcTransmissionTime(*nd, *(it.second), true, false);
+	execution_time = CalcExecutionTime(*nd, *(it.second));
+
+	time_tmp = std::max(this->global_timer, max_aft);
+
+	time_tmp += transmission_time;
+	time_tmp = std::max(time_tmp, (it.second)->FakeAvaTime());
+	time_tmp += execution_time;
+
+	fakeava_bak = (it.second)->FakeAvaTime();
+	(it.second)->SetFakeAvaTime(time_tmp);
+
+	//std::cout<<"Put "<<nd->GetId()<<" on "<<it.first<<", EFT: "<<time_tmp<<std::endl;
+
+	//2. process children tasks
+	Device * dev_in;
+	float EFT_max = 0;
+	std::vector<std::pair<int, float>> FATstack;
+	for (auto& succId : nd->output) {
+	  Node * succNd = global_graph.GetNode(succId);
+	  float EFT_tmp = Lookahead(depth-1, time_tmp, succNd, &dev_in);
+	  //std::cout<<"Try "<<succId<<" on "<<(dev_in)->GetId()<<", EFT: "<<EFT_tmp<<std::endl;
+	  FATstack.push_back(std::make_pair<int, float>((dev_in)->GetId(), (dev_in)->FakeAvaTime()));
+	  (dev_in)->SetFakeAvaTime(EFT_tmp);
+	  EFT_max = std::max(EFT_max, EFT_tmp);
+	}
+	for (auto& pair : FATstack) {
+	  TaihuLight[pair.first]->SetFakeAvaTime(pair.second);
+	}
+
+	//3. check whether a better solution is found
+	if(EFT < 0.0f || EFT > EFT_max){
+	  *dev = it.second;
+	  EFT = EFT_max;
+	}
+
+	//4. restore everything
+	(it.second)->MemFree(CalcMemDmd(nd, it.second));
+	nd->SetOccupied(occupied_bak);
+	(it.second)->SetFakeAvaTime(fakeava_bak);
+      }
+      time = EFT;
+    }
+    return time;
   }
 
   /** Pick a free device according to the task requirements and
@@ -1960,6 +2053,11 @@ namespace triplet{
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
       Node* input_nd = global_graph.GetNode(*iter);
       int input_dev_id = input_nd->GetOccupied();
+
+      if(input_dev_id == -1){
+	//Actually the corresponding task is not executed
+	input_dev_id = dev.GetId();
+      }
 
       // On the same device, ignore the data transmission time
       // The input node is an entry node with entry task duplication, ignore the transmission time

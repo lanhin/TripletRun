@@ -159,6 +159,16 @@ namespace triplet{
      */
     float CalcMemDmd(Node * nd, Device * dev);
 
+    /** Lookahead scheme used in Runtime::DevicePick()
+	depth: lookahead levels
+	max_aft: the predicted ready time of Node nd
+	nd: the scheduled node
+	dev: the device on which ndId should be put
+	return: the amount of (EFT - dev->avaTime())
+    */
+    float Lookahead(int depth, float max_aft, Node * nd, Device ** dev);
+
+
     /** Pick a free device according to the task requirements and
 	scheduling policy.
     */
