@@ -38,6 +38,7 @@ namespace triplet{
     DONFL2,
     ADONL,
 
+    LA, //Lookahead
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
@@ -250,6 +251,10 @@ namespace triplet{
      */
     void SimulationReport();
 
+    /** Set Lookahead depth
+     */
+    void SetLADepth(int depth);
+
     /** Return the global_graph.
 	Just for testing.
      */
@@ -290,6 +295,7 @@ namespace triplet{
     int max_parallel; // Max parallelism
     int mem_full_dev; // Number of devices whoes RAM is (nearly) full
     int load_balance_threshold; // Load balance task number threshold, 0 means no load balance policy
+    int la_depth; // Lookahead depth
 
     int max_computeDevId; // The device id that with the max compute power
 

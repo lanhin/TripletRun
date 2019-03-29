@@ -33,7 +33,7 @@ void ShowDeviceInfo(triplet::Device dev){
   std::cout<<" Location: "<<dev.GetLocation()<<std::endl;
   std::cout<<"==========================="<<std::endl;
 }
- 
+
 /** Output a graph's information, especially the nodes.
  */
 void ShowGraphInfo(triplet::Graph gra, std::set<int> idset){
@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
   int lb_threshold = 0;
   int total_steps = 1;
   int issue_width = 1;
+  int ladepth = 0;
   float scheduler_cost = 0.0;
   float alpha = 0.5;
   float memfull_t = 0.9;
@@ -109,6 +110,7 @@ int main(int argc, char *argv[])
       {"alpha", 1, 0, 'a'},
       {"cluster", 1, 0, 'c'},
       {"dcratio", 1, 0, 'd'},
+      {"ladepth", 1, 0, 'e'},
       {"devfull", 1, 0, 'f'}, //dev_full_threshold
       {"graph", 1, 0, 'g'},
       {"help", 0, 0, 'h'},
@@ -122,7 +124,7 @@ int main(int argc, char *argv[])
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "a:c:d:f:g:hi:l:m:p:s:t:w:",
+    c = getopt_long(argc, argv, "a:c:d:e:f:g:hi:l:m:p:s:t:w:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -140,6 +142,10 @@ int main(int argc, char *argv[])
     case 'd':
       assert(optarg);
       dcratio = atof(optarg);
+      break;
+    case 'e':
+      assert(optarg);
+      ladepth = atoi(optarg);
       break;
     case 'f':
       assert(optarg);
@@ -219,6 +225,9 @@ int main(int argc, char *argv[])
       }else if(strcmp("ADONL", optarg) == 0 || strcmp("adonl", optarg) == 0){
 	scheduler = triplet::ADONL;
 	std::cout<<"scheduler ADONL"<<std::endl;
+      }else if(strcmp("LA", optarg) == 0 || strcmp("la", optarg) == 0){
+	scheduler = triplet::LA;
+	std::cout<<"scheduler LA"<<std::endl;
       }else{
 	std::cout<<"Error: cannot identify scheduler "<<optarg<<std::endl;
 	exit(1);
@@ -281,6 +290,9 @@ int main(int argc, char *argv[])
   rt.SetMemFull(memfull_t);
   rt.SetDevFull(devfull_t);
   rt.InitRuntime(scheduler, dcratio, with_conflicts);
+  if(scheduler == triplet::LA){
+    rt.SetLADepth(ladepth);
+  }
   rt.SetLoadBalanceThreshold(lb_threshold);
   rt.SetSchedulerCost(scheduler_cost);
   rt.Execute();

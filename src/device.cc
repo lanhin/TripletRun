@@ -136,7 +136,8 @@ namespace triplet{
 
   /** Free a memory block*/
   void Device::MemFree(float size){
-    assert(size <= Allocated_RAM + ZERO_POSITIVE);
+    //assert(size <= Allocated_RAM + ZERO_POSITIVE);
+    assert(size <= Allocated_RAM + 1);
     Allocated_RAM = std::max((float)0, Allocated_RAM - size);
 
 #ifdef DEBUG
@@ -333,6 +334,7 @@ namespace triplet{
    */
   void Device::SetFakeAvaTime(float fat){
     this->fake_available_time = fat;
+    //std::cout<<"[Dev "<<GetId()<<"] set fake ava time as "<<fat<<std::endl;
   }
 
 

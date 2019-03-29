@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "json/json.h"
 #include "utils.h"
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -19,6 +20,7 @@ namespace triplet{
   //Class Runtime
   Runtime::Runtime(){
     ETD = false;
+    la_depth = 0;
     max_step = 0;
     total_step = 1;
     step_done = -1;
@@ -117,7 +119,7 @@ namespace triplet{
     for (int index = 0; index < root["nodes"].size(); index++){
       std::string id = root["nodes"][index].get("id", "-1").asString();
       std::string computeDemand = root["nodes"][index].get("comDmd", "-1.0").asString();
-      std::string dataDemand = root["nodes"][index].get("dataDmd", "1.0").asString();
+      std::string dataDemand = root["nodes"][index].get("dataDmd", "0.0").asString();
       std::string dataConsume = root["nodes"][index].get("c", "-1.0").asString();
       std::string dataGenerate = root["nodes"][index].get("g", "-1.0").asString();
       std::string loc = root["nodes"][index].get("loc", "-1").asString();
@@ -409,12 +411,21 @@ namespace triplet{
       this->absCP = global_graph.CalcPriorityCPOP();
     }
 
-    if (Scheduler == DONF || Scheduler == DONF2 || Scheduler == ADON || Scheduler == DONFM || Scheduler == DONFL || Scheduler == DONFL2 || Scheduler == ADONL){
+    if (Scheduler == DONF ||
+	Scheduler == DONF2 ||
+	Scheduler == ADON ||
+	Scheduler == DONFM ||
+	Scheduler == DONFL ||
+	Scheduler == DONFL2 ||
+	Scheduler == ADONL ||
+	Scheduler == LA){
       DECLARE_TIMING(NDON);
       log_start("NDON calculation...");
       START_TIMING(NDON);
       CalcNDON();
-      if(Scheduler == ADON || Scheduler == ADONL){
+      if(Scheduler == ADON ||
+	 Scheduler == ADONL ||
+	 Scheduler == LA){
 	CalcADON();
       }
       STOP_TIMING(NDON);
@@ -1402,7 +1413,8 @@ namespace triplet{
     case DONFM:
     case DONFL:
     case DONFL2:
-    case ADONL:{
+    case ADONL:
+    case LA:{
       if(InnerScheduler == DONFM){//this->mem_full_dev / this->deviceNum >= this->dev_full_threshold){
 	//RAM full pick
 	/*
@@ -1456,7 +1468,8 @@ namespace triplet{
 	std::vector<int>::iterator iter = ready_queue.begin();
 	for (; iter != ready_queue.end(); iter++){
 	  Node* nd = global_graph.GetNode(*iter);
-	  if( Scheduler == ADON || Scheduler == ADONL){ // ADON, ADONL
+	  if( Scheduler == ADON || Scheduler == ADONL ||
+	      Scheduler == LA){ // ADON, ADONL
 	    degree = nd->GetRank_ADON();
 	  }else if( Scheduler == DONF2 || Scheduler == DONFL2 ){ // DONF2, DONFL2
 	    degree = NDON(nd, 2);
@@ -1522,6 +1535,19 @@ namespace triplet{
 	if(CalcMemDmd(nd, it.second) > (it.second)->GetFreeRAM() + ZERO_POSITIVE){
 	  continue;
 	}
+	if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
+	  //The task is not executable on the device
+	  continue;
+	}
+#if 1
+	if(nd->Loc() != -1){
+	  Node * depNd = global_graph.GetNode(nd->Loc());
+	  if(depNd->GetOccupied() != -1 && depNd->GetOccupied() != it.first){
+	    continue;
+	  }
+	}
+#endif
+
 	transmission_time = CalcTransmissionTime(*nd, *(it.second), true, false);
 	execution_time = CalcExecutionTime(*nd, *(it.second));
 
@@ -1538,7 +1564,9 @@ namespace triplet{
       }
       *dev = dev_tmp;
       time = time_tmp_min;// - (dev_tmp->FakeAvaTime());
-      //std::cout<<"Dep 0, put "<<nd->GetId()<<" on "<<dev_tmp->GetId()<<", EFT: "<<time<<std::endl;
+#ifdef LK_DEBUG
+      std::cout<<"Dep 0, put "<<nd->GetId()<<" on "<<dev_tmp->GetId()<<", EFT: "<<time<<std::endl;
+#endif
     }else{
       //This is not the last level
       float occupied_bak, time_tmp, fakeava_bak, EFT = -1;
@@ -1548,8 +1576,22 @@ namespace triplet{
 	if(CalcMemDmd(nd, it.second) > (it.second)->GetFreeRAM() + ZERO_POSITIVE){
 	  continue;
 	}
+	if(nd->GetRatio((it.second)->GetType()) < ZERO_NEGATIVE){
+	  //The task is not executable on the device
+	  continue;
+	}
+#if 1
+	if(nd->Loc() != -1){
+	  Node * depNd = global_graph.GetNode(nd->Loc());
+	  if(depNd->GetOccupied() != -1 && depNd->GetOccupied() != it.first){
+	    continue;
+	  }
+	}
+#endif
+
 	nd->SetOccupied(it.first);
-	(it.second)->MemAlloc(CalcMemDmd(nd, it.second));
+	float mem_dmd = CalcMemDmd(nd, it.second);
+	(it.second)->MemAlloc(mem_dmd);
 
 	transmission_time = CalcTransmissionTime(*nd, *(it.second), true, false);
 	execution_time = CalcExecutionTime(*nd, *(it.second));
@@ -1563,17 +1605,32 @@ namespace triplet{
 	fakeava_bak = (it.second)->FakeAvaTime();
 	(it.second)->SetFakeAvaTime(time_tmp);
 
-	//std::cout<<"Put "<<nd->GetId()<<" on "<<it.first<<", EFT: "<<time_tmp<<std::endl;
+#ifdef LK_DEBUG
+	std::cout<<"Put "<<nd->GetId()<<" on "<<it.first<<", EFT: "<<time_tmp<<std::endl;
+#endif
 
 	//2. process children tasks
 	Device * dev_in;
 	float EFT_max = 0;
 	std::vector<std::pair<int, float>> FATstack;
+	std::vector<std::pair<float, int>> succNds;
 	for (auto& succId : nd->output) {
 	  Node * succNd = global_graph.GetNode(succId);
+	  //succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succId));
+	  succNds.push_back(std::make_pair<float, int>(NDON(succNd), succNd->GetId()));
+	}
+	std::sort(succNds.begin(), succNds.end(), std::greater<std::pair<float, int>>());
+
+	for (auto& succIt : succNds) {
+	  int succId = succIt.second;
+	  Node * succNd = global_graph.GetNode(succId);
 	  float EFT_tmp = Lookahead(depth-1, time_tmp, succNd, &dev_in);
-	  //std::cout<<"Try "<<succId<<" on "<<(dev_in)->GetId()<<", EFT: "<<EFT_tmp<<std::endl;
-	  FATstack.push_back(std::make_pair<int, float>((dev_in)->GetId(), (dev_in)->FakeAvaTime()));
+
+#ifdef LK_DEBUG
+	  std::cout<<"Try "<<succId<<" on "<<(dev_in)->GetId()<<", EFT: "<<EFT_tmp<<std::endl;
+#endif
+	  //FATstack.push_back(std::make_pair<int, float>((dev_in)->GetId(), (dev_in)->FakeAvaTime()));
+	  FATstack.insert(FATstack.begin(), std::make_pair<int, float>((dev_in)->GetId(), (dev_in)->FakeAvaTime()));
 	  (dev_in)->SetFakeAvaTime(EFT_tmp);
 	  EFT_max = std::max(EFT_max, EFT_tmp);
 	}
@@ -1588,7 +1645,7 @@ namespace triplet{
 	}
 
 	//4. restore everything
-	(it.second)->MemFree(CalcMemDmd(nd, it.second));
+	(it.second)->MemFree(mem_dmd);
 	nd->SetOccupied(occupied_bak);
 	(it.second)->SetFakeAvaTime(fakeava_bak);
       }
@@ -1875,6 +1932,11 @@ namespace triplet{
 
       }
 
+    }
+      break;
+
+    case LA:{
+      Lookahead(this->la_depth, this->global_timer, nd, &dev);
     }
       break;
 
@@ -2389,6 +2451,7 @@ namespace triplet{
       INSERT_ELEMENT(DONFL);
       INSERT_ELEMENT(DONFL2);
       INSERT_ELEMENT(ADONL);
+      INSERT_ELEMENT(LA);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT
@@ -2406,7 +2469,11 @@ namespace triplet{
     std::cout<<"-------- Simulation Report --------"<<std::endl;
     std::cout<<" Graph file: "<<graph_file_name<<std::endl;
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
-    std::cout<<" Scheduling Policy: "<<Scheduler<<std::endl;
+    std::cout<<" Scheduling Policy: "<<Scheduler;
+    if(Scheduler == LA){
+      std::cout<<", Lookahead depth: "<<this->la_depth;
+    }
+    std::cout<<std::endl;
     std::cout<<" DC Ratio: "<<DCRatio<<std::endl;
     std::cout<<" Alpha: "<<alpha_DON<<std::endl;
     std::cout<<" With Conflicts: "<<with_conflicts<<std::endl;
@@ -2465,6 +2532,12 @@ namespace triplet{
       }
     }
     std::cout<<"-----------------------------------"<<std::endl;
+  }
+
+  /** Set Lookahead depth
+   */
+  void Runtime::SetLADepth(int depth){
+    this->la_depth = depth;
   }
 
   /** Return the global_graph.
