@@ -175,6 +175,15 @@ namespace triplet{
       }
     }
 
+#ifdef PREFER_GPU
+    for (auto ndId : idset) {
+      Node * nd = global_graph.GetNode(ndId);
+      if(nd->GetRatio(2) >= ZERO_POSITIVE && nd->Loc() == -1){
+	nd->AddRatio(1, -1.0f);
+      }
+    }
+#endif
+
 
     /** Add source and sink vertex if need.
      */
