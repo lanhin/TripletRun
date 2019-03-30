@@ -228,6 +228,9 @@ int main(int argc, char *argv[])
       }else if(strcmp("LA", optarg) == 0 || strcmp("la", optarg) == 0){
 	scheduler = triplet::LA;
 	std::cout<<"scheduler LA"<<std::endl;
+      }else if(strcmp("LALF", optarg) == 0 || strcmp("lalf", optarg) == 0){
+	scheduler = triplet::LALF;
+	std::cout<<"scheduler LALF"<<std::endl;
       }else{
 	std::cout<<"Error: cannot identify scheduler "<<optarg<<std::endl;
 	exit(1);
@@ -290,7 +293,7 @@ int main(int argc, char *argv[])
   rt.SetMemFull(memfull_t);
   rt.SetDevFull(devfull_t);
   rt.InitRuntime(scheduler, dcratio, with_conflicts);
-  if(scheduler == triplet::LA){
+  if(scheduler == triplet::LA || scheduler == triplet::LALF){
     rt.SetLADepth(ladepth);
   }
   rt.SetLoadBalanceThreshold(lb_threshold);

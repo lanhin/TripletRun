@@ -192,7 +192,7 @@ TEST(RuntimeTest, Lookahead){
   triplet::Runtime rt;
   rt.InitGraph("graph_test.json");
   rt.InitCluster("cluster_test.json");
-  rt.InitRuntime(triplet::RR);
+  rt.InitRuntime(triplet::DONF);
 
   triplet::Cluster sugon = rt.GetCluster();
   triplet::Graph gr = rt.GetGraph();
@@ -234,7 +234,35 @@ TEST(RuntimeTest, Lookahead){
   EXPECT_EQ(gr.GetNode(3)->GetOccupied(), -1);
   EXPECT_EQ(gr.GetNode(4)->GetOccupied(), -1);
   EXPECT_EQ(gr.GetNode(5)->GetOccupied(), -1);
-  EXPECT_EQ((dev)->GetId(), 3);
-  EXPECT_FLOAT_EQ(EFT, 5.729167);
+  EXPECT_EQ((dev)->GetId(), 0);
+  EXPECT_FLOAT_EQ(EFT, 5.395833);
 #endif
+}
+
+TEST(RuntimeTest, Lookahead2){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test2.json");
+  rt.InitCluster("cluster_test.json");
+  rt.InitRuntime(triplet::LA);
+
+  triplet::Cluster sugon = rt.GetCluster();
+  triplet::Graph gr = rt.GetGraph();
+  triplet::Device* dev;
+  triplet::Node * nd = gr.GetNode(0);
+  float EFT;
+  EFT = rt.Lookahead(2, 0, nd, &dev);
+}
+
+TEST(RuntimeTest, LALF){
+  triplet::Runtime rt;
+  rt.InitGraph("graph_test.json");
+  rt.InitCluster("cluster_test.json");
+  rt.InitRuntime(triplet::LALF);
+
+  triplet::Cluster sugon = rt.GetCluster();
+  triplet::Graph gr = rt.GetGraph();
+  triplet::Device* dev;
+  triplet::Node * nd = gr.GetNode(0);
+  float EFT;
+  EFT = rt.Lookahead(2, 0, nd, &dev);
 }

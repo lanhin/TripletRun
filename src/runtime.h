@@ -39,6 +39,7 @@ namespace triplet{
     ADONL,
 
     LA, //Lookahead
+    LALF, //Lookahead with large job first
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
@@ -308,6 +309,7 @@ namespace triplet{
     float global_timer; // For recording global time.
     float scheduler_mean_cost; // Mean cost of scheduling.
     float mean_computing_power; // Mean computation power of all devices.
+    float mean_bandwidth; // Mean memory bandwidth of all devices.
     float DCRatio; // Data centric ratio, used in devicepick
     float load_time; // The load balance time threshold
     float mem_full_threshold; // RAM full threshold for a single device

@@ -38,6 +38,7 @@ namespace triplet{
     dev_hit_counter = 0;
     dc_valid_counter = 0;
     mean_computing_power = 0;
+    mean_bandwidth = 0;
     DCRatio = 0;
     max_parallel = 0;
     load_balance_threshold = 0;
@@ -175,6 +176,8 @@ namespace triplet{
       }
     }
 
+//The following code block is just a temporary logic.
+//Remove it as you like.
 #ifdef PREFER_GPU
     for (auto ndId : idset) {
       Node * nd = global_graph.GetNode(ndId);
@@ -314,6 +317,7 @@ namespace triplet{
       deviceNum ++;
       max_devId = std::max(max_devId, id1);
       mean_computing_power += (compute1 - mean_computing_power) / (deviceNum);
+      mean_bandwidth += (bw1 - mean_bandwidth) / (deviceNum);
       computerset.insert(loc1);
 
       //Record the max compute power
@@ -1494,6 +1498,19 @@ namespace triplet{
     }
       break;
 
+    case LALF:{
+      float cost, maxCost = -1;
+      std::vector<int>::iterator iter = ready_queue.begin();
+      for (; iter != ready_queue.end(); iter++){
+	Node* nd = global_graph.GetNode(*iter);
+	cost = nd->GetCompDmd() / this->mean_computing_power + std::max(nd->GetDataDmd(), nd->GetDataGenerate()) / this->mean_bandwidth;
+	if(maxCost < cost){
+	  maxCost = cost;
+	  taskIdx = *iter;
+	}
+      }
+    }
+      break;
     case MULTILEVEL:
       break;
 
@@ -1626,9 +1643,26 @@ namespace triplet{
 	for (auto& succId : nd->output) {
 	  Node * succNd = global_graph.GetNode(succId);
 	  //succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succId));
-	  succNds.push_back(std::make_pair<float, int>(NDON(succNd), succNd->GetId()));
+	  if(this->Scheduler == LA){
+	    succNds.push_back(std::make_pair<float, int>(NDON(succNd), succNd->GetId()));
+	  }else{//LALF
+	    succNds.push_back(std::make_pair<float, int>((succNd->GetCompDmd() / this->mean_computing_power + std::max(succNd->GetDataDmd(), succNd->GetDataGenerate()) / this->mean_bandwidth), succNd->GetId()));
+	  }
 	}
+#ifdef LK_DEBUG
+	std::cout<<"Before: "<<std::endl;
+	for (auto it : succNds) {
+	  std::cout<<it.first<<", "<<it.second<<std::endl;
+	}
+#endif
 	std::sort(succNds.begin(), succNds.end(), std::greater<std::pair<float, int>>());
+#ifdef LK_DEBUG
+	std::cout<<"After: "<<std::endl;
+	for (auto it : succNds) {
+	  std::cout<<it.first<<", "<<it.second<<std::endl;
+	}
+#endif
+
 
 	for (auto& succIt : succNds) {
 	  int succId = succIt.second;
@@ -1944,7 +1978,8 @@ namespace triplet{
     }
       break;
 
-    case LA:{
+    case LA:
+    case LALF:{
       Lookahead(this->la_depth, this->global_timer, nd, &dev);
     }
       break;
@@ -2461,6 +2496,7 @@ namespace triplet{
       INSERT_ELEMENT(DONFL2);
       INSERT_ELEMENT(ADONL);
       INSERT_ELEMENT(LA);
+      INSERT_ELEMENT(LALF);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT
@@ -2479,7 +2515,7 @@ namespace triplet{
     std::cout<<" Graph file: "<<graph_file_name<<std::endl;
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
     std::cout<<" Scheduling Policy: "<<Scheduler;
-    if(Scheduler == LA){
+    if(Scheduler == LA || Scheduler == LALF){
       std::cout<<", Lookahead depth: "<<this->la_depth;
     }
     std::cout<<std::endl;
@@ -2492,6 +2528,8 @@ namespace triplet{
     std::cout<<" Global timer: "<<global_timer<<std::endl;
     std::cout<<" Max parallelism: "<<this->max_parallel<<std::endl;
     std::cout<<" Mean wait time: "<<GetMeanWaitTime()<<std::endl;
+    std::cout<<" Mean computing power: "<<this->mean_computing_power<<std::endl;
+    std::cout<<" Mean memory bandwidth: "<<this->mean_bandwidth<<std::endl;
     std::cout<<" Cpath cost summary: "<<this->max_cpath_cc<<std::endl;
     std::cout<<" Scheduler cost: "<<this->scheduler_mean_cost<<std::endl;
     // Note: This speedup value maybe not so accurate!
