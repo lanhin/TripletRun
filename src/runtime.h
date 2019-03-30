@@ -40,6 +40,7 @@ namespace triplet{
 
     LA, //Lookahead
     LALF, //Lookahead with large job first
+    LARQ, //Lookahead of ready jobs
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };

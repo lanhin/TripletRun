@@ -431,14 +431,16 @@ namespace triplet{
 	Scheduler == DONFL ||
 	Scheduler == DONFL2 ||
 	Scheduler == ADONL ||
-	Scheduler == LA){
+	Scheduler == LA ||
+	Scheduler == LARQ){
       DECLARE_TIMING(NDON);
       log_start("NDON calculation...");
       START_TIMING(NDON);
       CalcNDON();
       if(Scheduler == ADON ||
 	 Scheduler == ADONL ||
-	 Scheduler == LA){
+	 Scheduler == LA ||
+	 Scheduler == LARQ){
 	CalcADON();
       }
       STOP_TIMING(NDON);
@@ -1427,7 +1429,8 @@ namespace triplet{
     case DONFL:
     case DONFL2:
     case ADONL:
-    case LA:{
+    case LA:
+    case LARQ:{
       if(InnerScheduler == DONFM){//this->mem_full_dev / this->deviceNum >= this->dev_full_threshold){
 	//RAM full pick
 	/*
@@ -1481,8 +1484,10 @@ namespace triplet{
 	std::vector<int>::iterator iter = ready_queue.begin();
 	for (; iter != ready_queue.end(); iter++){
 	  Node* nd = global_graph.GetNode(*iter);
-	  if( Scheduler == ADON || Scheduler == ADONL ||
-	      Scheduler == LA){ // ADON, ADONL
+	  if( Scheduler == ADON ||
+	      Scheduler == ADONL ||
+	      Scheduler == LA ||
+	      Scheduler == LARQ ){ // ADON, ADONL, LA, LARQ
 	    degree = nd->GetRank_ADON();
 	  }else if( Scheduler == DONF2 || Scheduler == DONFL2 ){ // DONF2, DONFL2
 	    degree = NDON(nd, 2);
@@ -1640,13 +1645,20 @@ namespace triplet{
 	float EFT_max = 0;
 	std::vector<std::pair<int, float>> FATstack;
 	std::vector<std::pair<float, int>> succNds;
-	for (auto& succId : nd->output) {
-	  Node * succNd = global_graph.GetNode(succId);
-	  //succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succId));
-	  if(this->Scheduler == LA){
-	    succNds.push_back(std::make_pair<float, int>(NDON(succNd), succNd->GetId()));
-	  }else{//LALF
-	    succNds.push_back(std::make_pair<float, int>((succNd->GetCompDmd() / this->mean_computing_power + std::max(succNd->GetDataDmd(), succNd->GetDataGenerate()) / this->mean_bandwidth), succNd->GetId()));
+	if(this->Scheduler == LA || this->Scheduler == LALF){
+	  for (auto& succId : nd->output) {
+	    Node * succNd = global_graph.GetNode(succId);
+	    //succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succId));
+	    if(this->Scheduler == LA){
+	      succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succNd->GetId()));
+	    }else{//LALF
+	      succNds.push_back(std::make_pair<float, int>((succNd->GetCompDmd() / this->mean_computing_power + std::max(succNd->GetDataDmd(), succNd->GetDataGenerate()) / this->mean_bandwidth), succNd->GetId()));
+	    }
+	  }
+	}else{//LARQ
+	  for (auto& succId : this->ready_queue) {
+	    Node * succNd = global_graph.GetNode(succId);
+	    succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succNd->GetId()));
 	  }
 	}
 #ifdef LK_DEBUG
@@ -1663,11 +1675,15 @@ namespace triplet{
 	}
 #endif
 
-
 	for (auto& succIt : succNds) {
 	  int succId = succIt.second;
 	  Node * succNd = global_graph.GetNode(succId);
-	  float EFT_tmp = Lookahead(depth-1, time_tmp, succNd, &dev_in);
+	  float EFT_tmp;
+	  if(this->Scheduler == LA || this->Scheduler == LALF){
+	    EFT_tmp = Lookahead(depth-1, time_tmp, succNd, &dev_in);
+	  }else{//LARQ
+	    EFT_tmp = Lookahead(0, time_tmp, succNd, &dev_in);
+	  }
 
 #ifdef LK_DEBUG
 	  std::cout<<"Try "<<succId<<" on "<<(dev_in)->GetId()<<", EFT: "<<EFT_tmp<<std::endl;
@@ -1979,7 +1995,8 @@ namespace triplet{
       break;
 
     case LA:
-    case LALF:{
+    case LALF:
+    case LARQ:{
       Lookahead(this->la_depth, this->global_timer, nd, &dev);
     }
       break;
@@ -2497,6 +2514,7 @@ namespace triplet{
       INSERT_ELEMENT(ADONL);
       INSERT_ELEMENT(LA);
       INSERT_ELEMENT(LALF);
+      INSERT_ELEMENT(LARQ);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT
@@ -2517,6 +2535,9 @@ namespace triplet{
     std::cout<<" Scheduling Policy: "<<Scheduler;
     if(Scheduler == LA || Scheduler == LALF){
       std::cout<<", Lookahead depth: "<<this->la_depth;
+    }
+    if(Scheduler == LARQ ){
+      std::cout<<", Lookahead depth: "<<std::max(this->la_depth, 1);
     }
     std::cout<<std::endl;
     std::cout<<" DC Ratio: "<<DCRatio<<std::endl;
