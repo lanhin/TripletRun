@@ -1429,8 +1429,7 @@ namespace triplet{
     case DONFL:
     case DONFL2:
     case ADONL:
-    case LA:
-    case LARQ:{
+    case LA:{
       if(InnerScheduler == DONFM){//this->mem_full_dev / this->deviceNum >= this->dev_full_threshold){
 	//RAM full pick
 	/*
@@ -1486,8 +1485,7 @@ namespace triplet{
 	  Node* nd = global_graph.GetNode(*iter);
 	  if( Scheduler == ADON ||
 	      Scheduler == ADONL ||
-	      Scheduler == LA ||
-	      Scheduler == LARQ ){ // ADON, ADONL, LA, LARQ
+	      Scheduler == LA ){ // ADON, ADONL, LA
 	    degree = nd->GetRank_ADON();
 	  }else if( Scheduler == DONF2 || Scheduler == DONFL2 ){ // DONF2, DONFL2
 	    degree = NDON(nd, 2);
@@ -1503,6 +1501,20 @@ namespace triplet{
     }
       break;
 
+    case LARQ:{
+      float pred_eft, min_pred_eft = -1;
+      Device * dev;
+      std::vector<int>::iterator iter = ready_queue.begin();
+      for (; iter != ready_queue.end(); iter++){
+	Node* nd = global_graph.GetNode(*iter);
+	pred_eft = Lookahead(1, this->global_timer, nd, &dev);
+	if(min_pred_eft < 0 || min_pred_eft > pred_eft){
+	  min_pred_eft = pred_eft;
+	  taskIdx = *iter;
+	}
+      }
+    }
+      break;
     case LALF:{
       float cost, maxCost = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
@@ -1581,6 +1593,7 @@ namespace triplet{
 
 	transmission_time = CalcTransmissionTime(*nd, *(it.second), true, false);
 	execution_time = CalcExecutionTime(*nd, *(it.second));
+	execution_time = std::max(this->min_execution_time, execution_time);
 
 	time_tmp = std::max(this->global_timer, max_aft);
 
@@ -1626,6 +1639,7 @@ namespace triplet{
 
 	transmission_time = CalcTransmissionTime(*nd, *(it.second), true, false);
 	execution_time = CalcExecutionTime(*nd, *(it.second));
+	execution_time = std::max(this->min_execution_time, execution_time);
 
 	time_tmp = std::max(this->global_timer, max_aft);
 
@@ -1657,6 +1671,9 @@ namespace triplet{
 	  }
 	}else{//LARQ
 	  for (auto& succId : this->ready_queue) {
+	    if(succId == nd->GetId()){//It is actually the parent task itself
+	      continue;
+	    }
 	    Node * succNd = global_graph.GetNode(succId);
 	    succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succNd->GetId()));
 	  }
