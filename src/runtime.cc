@@ -15,6 +15,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <cmath>
+//#include <cstdlib>
 
 namespace triplet{
   //Class Runtime
@@ -376,6 +377,24 @@ namespace triplet{
     RRCounter = -1; // Always set it -1 at the beginning of execution?
     DCRatio = dc;
     this->with_conflicts = wc;
+
+    if(Scheduler == DMFF){
+      std::string line;
+      int nid;
+      int assigned_index = 1;
+      std::ifstream myfile;
+      myfile.open("dmff_mapping");
+      if (myfile.is_open()) {
+	while (!myfile.eof()) {
+	  myfile >> line;
+	  nid = atoi(line.substr(0, line.find(",")).c_str());
+	  line = line.substr(line.find(",")+1);
+	  this->running_mapping[nid] = atoi(line.substr(0, line.find(",")).c_str());
+	}
+      }else{
+	log_error("Cannot open file dmff_mapping. Does it exist?");
+      }
+    }
 
     if (Scheduler == PEFT){
       DECLARE_TIMING(oct);
@@ -1359,7 +1378,9 @@ namespace triplet{
 
     case FCFS:
     case RR:
+    case DMFF:{
       taskIdx = ready_queue.front();
+    }
       break;
 
     case SJF:{ // Pick the shortest job
@@ -1816,6 +1837,12 @@ namespace triplet{
 	  }
 	}
       }
+      break;
+
+    case DMFF:{
+      assert(this->running_mapping.find(ndId) != this->running_mapping.end());
+      dev = TaihuLight[running_mapping[ndId]];
+    }
       break;
 
     case FCFS:
@@ -2532,6 +2559,7 @@ namespace triplet{
       INSERT_ELEMENT(LA);
       INSERT_ELEMENT(LALF);
       INSERT_ELEMENT(LARQ);
+      INSERT_ELEMENT(DMFF);
       INSERT_ELEMENT(MULTILEVEL);
       INSERT_ELEMENT(DATACENTRIC);
 #undef INSERT_ELEMENT

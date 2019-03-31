@@ -41,6 +41,7 @@ namespace triplet{
     LA, //Lookahead
     LALF, //Lookahead with large job first
     LARQ, //Lookahead of ready jobs
+    DMFF, //Device mapping from file
     MULTILEVEL, // Multi-level
     DATACENTRIC // Data-centric
     };
@@ -343,6 +344,7 @@ namespace triplet{
     std::set<int> computerset; //computer node set
     std::vector<int> ready_queue; // nodeid
     std::map<int, int> running_history; //nodeid -> deviceid
+    std::map<int, int> running_mapping; //nodeid -> deviceid, for DMFF simulation
     std::map<int, float> execution_queue; // nodeid -> execution finish time
     std::vector<std::pair<int,float>>block_free_queue; // blockid -> refer decrease time
     std::map<int, int> pending_list; // nodeid -> pending input

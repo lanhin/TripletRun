@@ -234,6 +234,9 @@ int main(int argc, char *argv[])
       }else if(strcmp("LARQ", optarg) == 0 || strcmp("larq", optarg) == 0){
 	scheduler = triplet::LARQ;
 	std::cout<<"scheduler LARQ"<<std::endl;
+      }else if(strcmp("DMFF", optarg) == 0 || strcmp("dmff", optarg) == 0){
+	scheduler = triplet::DMFF;
+	std::cout<<"scheduler DMFF"<<std::endl;
       }else{
 	std::cout<<"Error: cannot identify scheduler "<<optarg<<std::endl;
 	exit(1);
