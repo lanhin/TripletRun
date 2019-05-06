@@ -60,6 +60,7 @@ void Usage(){
   std::cout<<"\t-a, --alpha <float>: alpha for DONF2 and ADON policies."<<std::endl;
   std::cout<<"\t-c, --cluster <clusterfile>: set cluster file."<<std::endl;
   std::cout<<"\t-d, --dcratio <float>: Data-Centric ratio value."<<std::endl;
+  std::cout<<"\t-e, --ladepth <int>: The depth of Lookahead policies."<<std::endl;
   std::cout<<"\t-f, --devfull <float>: dev_full_threshold"<<std::endl;
   std::cout<<"\t-g, --graph <graphfile>: set graph file."<<std::endl;
   std::cout<<"\t-h, --help: output this usage message."<<std::endl;

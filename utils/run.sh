@@ -3,6 +3,8 @@
 # @2018-01  by lanhin
 #
 
+set -e
+
 tripletrun(){
     lastop=${!#}
     #echo $lastop

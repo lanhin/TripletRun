@@ -2286,7 +2286,7 @@ namespace triplet{
     }
 
 #ifdef DEBUG
-    std::cout<<"Data transmission time: "<<data_transmission_time<<std::endl;
+    std::cout<<"Data transmission time of node "<<nd.GetId()<<": "<<data_transmission_time<<std::endl;
 #endif
 
     return data_transmission_time;
@@ -2643,6 +2643,7 @@ namespace triplet{
 	//std::cout<<i.first<<","<<i.second<<std::endl;
 	fprintf(fp, "%d,%d\n", i.first, i.second);
       }
+      fclose(fp);
     }
     std::cout<<"-----------------------------------"<<std::endl;
   }
