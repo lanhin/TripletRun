@@ -1290,6 +1290,8 @@ namespace triplet{
 	dev->IncreaseTransTime(transmission_time);
 	dev->IncreaseRunTime(execution_time); // TODO: add transmission here as well?
 
+	//In case some tasks with location depency with this task are scheduled before THIS ONE finishes
+	running_history[task_node_id] = dev->GetId();
 #if 0
 	std::cout<<"Execution queue: "<<std::endl;
 	for (auto& x: execution_queue)
