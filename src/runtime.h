@@ -94,6 +94,18 @@ namespace triplet{
      */
     void InitGraph(const char * graphFile);
 
+    /** Set group_graph.
+     */
+    void SetGroupGraph(bool group_graph_bool);
+
+    /** Get group_graph.
+     */
+    bool GroupGraph();
+
+    /** Init group graph.
+     */
+    void InitGroupGraph();
+
     /** Init the cluster "TaihuLight" from configure file.
     */
     void InitCluster(const char * clusterFile);
@@ -286,6 +298,7 @@ namespace triplet{
   protected:
     bool ETD; // Entry task duplication flag
     bool with_conflicts; // With communication conflicts in DONF policies.
+    bool group_graph; // Group graph nodes
     SchedulePolicy Scheduler; // define the scheduler
     int max_step; // The max step stamp in execution. (count from 0)
     int total_step; // The total steps need to be executed. (count from 1)
@@ -341,6 +354,7 @@ namespace triplet{
 
     /* TODO: move this idset into class graph? */
     std::set<int> idset;  //Node id set
+    std::set<int> groupset; //Group id set
     std::set<int> computerset; //computer node set
     std::vector<int> ready_queue; // nodeid
     std::map<int, int> running_history; //nodeid -> deviceid
@@ -351,6 +365,8 @@ namespace triplet{
     std::map<int, MemoryBlock*> BlocksMap; // Memory blocks pool, blockid -> memory block
 
     Graph global_graph; // The computing graph.
+    Graph global_group_graph; // The group graph
+    Graph* global_graph_pt;
     Cluster TaihuLight; // The cluster.
     Connections TaihuLightNetwork; // Network of the cluster.
   };// Class Runtime

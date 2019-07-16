@@ -251,6 +251,22 @@ namespace triplet{
      */
     float MemAlloc();
 
+    /** If it is a group node.
+     */
+    bool IsGroup();
+
+    /** Set is_group.
+     */
+    void SetIsGroup(bool group_bool);
+
+    /** Set group number.
+     */
+    void SetGroup(int g_num);
+
+    /** Return group number.
+     */
+    int Group();
+
     /** The id set of the succ nodes.
      */
     nodeset output;
@@ -259,13 +275,19 @@ namespace triplet{
      */
     nodeset input;
 
+    /** The node ids set in a group.
+     */
+    nodeset nodes_in_group;
+
   protected:
+    bool is_group;
     NodeStatus status; //INIT, READY, RUNNING and FINISHED
     int id_;
     int occupied_device; // the occupied device id
     int level; // The min levels away from source node
     int step; // The step stamp of the node
     int loc;
+    int group; // Which group this node belongs to
     float computing_demand;
     float data_demand;
     float data_consume;
@@ -303,7 +325,7 @@ namespace triplet{
 	dataDmd: data demand
      */
     void AddNode(int id);
-    void AddNode(int id, float comDmd, float dataDmd, float dataConsume = -1.0, float dataGenerate = -1.0, int location = -1);
+    void AddNode(int id, float comDmd, float dataDmd, float dataConsume = -1.0, float dataGenerate = -1.0, int location = -1, int group = -1);
 
     /** Add an edge from src to dst.
 	Also give the communication cost if need.

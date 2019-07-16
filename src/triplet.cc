@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
   float memfull_t = 0.9;
   float devfull_t = 0.2;
   bool with_conflicts = false;
+  bool groupgraph = false;
 
   while (1) {
     int this_option_optind = optind ? optind : 1;
@@ -119,13 +120,14 @@ int main(int argc, char *argv[])
       {"loadbalance", 1, 0, 'l'}, // Load balance threshold task number
       {"memfull", 1, 0, 'm'}, //mem_full_threshold
       {"steps", 1, 0, 'p'}, // total steps`
+      {"groupgraph", 0, 0, 'r'}, // Group graph
       {"scheduler", 1, 0, 's'},
       {"scost", 1, 0, 't'}, // Scheduler cost
       {"with-conflicts", 1, 0, 'w'}, // with conflicts for DONF policies
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "a:c:d:e:f:g:hi:l:m:p:s:t:w:",
+    c = getopt_long(argc, argv, "a:c:d:e:f:g:hi:l:m:p:rs:t:w:",
 		    long_options, &option_index);
     if (c == -1)
       break;
@@ -176,6 +178,9 @@ int main(int argc, char *argv[])
     case 'p':
       assert(optarg);
       total_steps = atoi(optarg);
+      break;
+    case 'r':
+      groupgraph = true;
       break;
     case 's':
       assert(optarg);
@@ -279,7 +284,11 @@ int main(int argc, char *argv[])
   DECLARE_TIMING(cluster);
 
   START_TIMING(graph);
+  rt.SetGroupGraph(groupgraph);
   rt.InitGraph(graphfile);
+  if(rt.GroupGraph()){
+    rt.InitGroupGraph();
+  }
   STOP_TIMING(graph);
   std::cout<<" Graph init time: "<<GET_TIMING(graph)<<" s"<<std::endl;
 

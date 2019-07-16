@@ -21,6 +21,7 @@ namespace triplet{
   //Class Runtime
   Runtime::Runtime(){
     ETD = false;
+    group_graph = false;
     la_depth = 0;
     max_step = 0;
     total_step = 1;
@@ -84,6 +85,7 @@ namespace triplet{
     TaihuLight.clear();
     TaihuLightNetwork.Clear();
     global_graph.Clear();
+    global_group_graph.Clear();
     ready_queue.clear();
     execution_queue.clear();
     pending_list.clear();
@@ -125,8 +127,11 @@ namespace triplet{
       std::string dataConsume = root["nodes"][index].get("c", "-1.0").asString();
       std::string dataGenerate = root["nodes"][index].get("g", "-1.0").asString();
       std::string loc = root["nodes"][index].get("loc", "-1").asString();
+      std::string group = root["nodes"][index].get("group", "-1").asString();
+
       int id1 = std::stoi(id);
       int loc1 = std::stoi(loc);
+      int group1 = std::stoi(group);
       float comDmd1 = std::stof(computeDemand);
       float dataDmd1 = std::stof(dataDemand);
       float dataConsume1 = std::stof(dataConsume);
@@ -136,7 +141,7 @@ namespace triplet{
       if (comDmd1 < 1){
 	comDmd1 = 0.1;
       }
-      global_graph.AddNode(id1, comDmd1, dataDmd1, dataConsume1, dataGenerate1, loc1);
+      global_graph.AddNode(id1, comDmd1, dataDmd1, dataConsume1, dataGenerate1, loc1, group1);
       idset.insert(id1);
 
 #if 0
@@ -260,10 +265,117 @@ namespace triplet{
     }
 #endif
 
+    // To make sure all the old code works
+    this->global_graph_pt = &(this->global_graph);
+
     STOP_TIMING(graph);
     this->graph_init_time = GET_TIMING(graph);
     log_end("Graph initialization.");
   }
+
+  /** Set group_graph.
+   */
+  void Runtime::SetGroupGraph(bool group_graph_bool){
+    this->group_graph = group_graph_bool;
+  }
+
+  /** Get group_graph.
+   */
+  bool Runtime::GroupGraph(){
+    return this->group_graph;
+  }
+
+  /** Init group graph.
+   */
+  void Runtime::InitGroupGraph(){
+    // Init: global_group_graph, including edges and ratios
+    // 1. Init
+    for (int ndId : idset) {
+      Node * nd=global_graph.GetNode(ndId);
+      int group_id = nd->Group();
+      if(groupset.find(group_id) == groupset.end()){
+	//A new group
+	global_group_graph.AddNode(group_id, nd->GetCompDmd(), nd->GetDataDmd(), nd->GetDataConsume(), nd->GetDataGenerate());
+	groupset.insert(group_id);
+      }else{//The group already exists
+	Node * gnd = global_group_graph.GetNode(group_id);
+	gnd->SetCompDmd(gnd->GetCompDmd() + nd->GetCompDmd());
+	gnd->SetDataDmd(gnd->GetDataDmd() + nd->GetDataDmd());
+	// dataConsume & dataGenerate is not necessary
+      }
+      global_group_graph.GetNode(group_id)->nodes_in_group.insert(ndId);
+      // speed ratios
+      int max_type = 2;
+      for(int type=1; type <= max_type; type ++){
+	if(nd->GetRatio(type) < ZERO_NEGATIVE){
+	  global_group_graph.GetNode(group_id)->AddRatio(type, -1.0);
+	}
+      }
+    }
+
+    this->global_graph_pt = &(this->global_graph);
+    // Init edges
+    for(int ndId : idset) {
+      Node * nd=global_graph.GetNode(ndId);
+      for(int out_node : nd->output){
+	Node * out_nd = global_graph.GetNode(out_node);
+	if(nd->Group() != out_nd->Group()){
+	  global_group_graph.AddEdge(nd->Group(), out_nd->Group(), CommunicationDataSize(ndId, out_node));
+	}
+      }
+    }
+
+    /** Add source and sink vertex if need.
+     */
+    /** 1. Find the entry and exit vertex,
+	if multiple, creat new "source" and "sink" vertice.
+     */
+    int maxVertexId = 0;
+    int sourceId, sinkId;
+    std::set<int> entryVertexSet;
+    std::set<int> exitVertexSet;
+    for (std::set<int>::iterator iter = groupset.begin(); iter != groupset.end(); iter++){
+      if (maxVertexId < *iter){
+	maxVertexId = *iter;
+      }
+
+      int inputDegree = global_group_graph.GetNode(*iter)->GetInNum();
+      if (inputDegree == 0){ //an entry node
+	entryVertexSet.insert(*iter);
+	sourceId = *iter;
+      }
+
+      int outputDegree = global_group_graph.GetNode(*iter)->GetOutNum();
+      if (outputDegree == 0){ //an exit node
+	exitVertexSet.insert(*iter);
+	sinkId = *iter;
+      }
+    }
+
+    if(entryVertexSet.size() > 1){ // Multiple entry vertices
+      // create a new "source" vertex
+      sourceId = ++maxVertexId;
+      global_group_graph.AddNode(sourceId, 0.1, 0.1);
+      groupset.insert(sourceId);
+      for (auto& it : entryVertexSet){
+	global_group_graph.AddEdge(sourceId, it, 0);
+      }
+    }
+
+    if(exitVertexSet.size() > 1){ // Multiple exit vertices
+      // create a new "sink" vertex
+      sinkId = ++maxVertexId;
+      global_group_graph.AddNode(sinkId, 0.1, 0.1);
+      groupset.insert(sinkId);
+      for (auto& it : exitVertexSet){
+	global_group_graph.AddEdge(it, sinkId, 0);
+      }
+    }
+
+    global_group_graph.SetSourceId(sourceId);
+    global_group_graph.SetSinkId(sinkId);
+  }
+
 
   /** Init the cluster "TaihuLight" from configure file.
    */
@@ -367,6 +479,11 @@ namespace triplet{
   void Runtime::InitRuntime(SchedulePolicy sch, float dc, bool wc){
     log_start("Runtime initialization...");
 
+    this->global_graph_pt = &(this->global_graph);
+    if(this->GroupGraph()){
+      this->global_graph_pt = &(this->global_group_graph);
+    }
+
     // Init min_execution_time and min_transmission_time
     this->min_execution_time = 0.01;
     this->min_transmission_time = 0.01;
@@ -418,7 +535,7 @@ namespace triplet{
 
     if (Scheduler == HSIP || Scheduler == HEFT || Scheduler == CPOP){
       log_start("OCCW initialization...");
-      global_graph.InitAllOCCW(); //OCCW for HSIP
+      global_graph_pt->InitAllOCCW(); //OCCW for HSIP
       log_end("OCCW initialization.");
 
       DECLARE_TIMING(ranku);
@@ -440,7 +557,7 @@ namespace triplet{
       log_end("Rank_d calculation.");
 
       // Calculate priority used in CPOP policy.
-      this->absCP = global_graph.CalcPriorityCPOP();
+      this->absCP = global_graph_pt->CalcPriorityCPOP();
     }
 
     if (Scheduler == DONF ||
@@ -471,8 +588,14 @@ namespace triplet{
     }
 
     // Init ready_queue
-    for (std::set<int>::iterator iter = idset.begin(); iter != idset.end(); iter++){
-      int pend = global_graph.GetNode(*iter)->GetInNum();
+    std::set<int> * tmp_idset;
+    if(this->GroupGraph()){
+      tmp_idset = &groupset;
+    }else{
+      tmp_idset = &idset;
+    }
+    for (std::set<int>::iterator iter = tmp_idset->begin(); iter != tmp_idset->end(); iter++){
+      int pend = global_graph_pt->GetNode(*iter)->GetInNum();
       assert(pend >= 0);
 
 #if 0
@@ -483,14 +606,14 @@ namespace triplet{
 
       if (pend == 0){ //add it into ready_queue
 	ready_queue.push_back(*iter);
-	global_graph.GetNode(*iter)->SetStatus(READY); // Set node's status
+	global_graph_pt->GetNode(*iter)->SetStatus(READY); // Set node's status
 
 	// Calculate Cpath computatin cost
-	global_graph.CalcCpathCC(*iter, this->max_devCompute, this->min_execution_time);
-	global_graph.CalcCpathCCMem(*iter, this->max_devCompute, TaihuLight[this->max_computeDevId]->GetBw(), this->min_execution_time);
+	global_graph_pt->CalcCpathCC(*iter, this->max_devCompute, this->min_execution_time);
+	global_graph_pt->CalcCpathCCMem(*iter, this->max_devCompute, TaihuLight[this->max_computeDevId]->GetBw(), this->min_execution_time);
 
 	//Record the current time
-	global_graph.GetNode(*iter)->SetWaitTime(this->global_timer);
+	global_graph_pt->GetNode(*iter)->SetWaitTime(this->global_timer);
       }
     }
 
@@ -533,7 +656,7 @@ namespace triplet{
 
     /** 1. Find the "sink" vertex.
      */
-    int sinkId = global_graph.GetSinkId();
+    int sinkId = global_graph_pt->GetSinkId();
 
 
     /** 2. Traversing the DAG from the exit to the entry vertex
@@ -546,7 +669,7 @@ namespace triplet{
 	Or we need to preprocess the graph and device conf files
 	to make them equal.
      */
-    int tasks = global_graph.MaxNodeId() + 1;//global_graph.Nodes();
+    int tasks = global_graph_pt->MaxNodeId() + 1;//global_graph.Nodes();
     int devs = this->max_devId + 1;//this->deviceNum;
     assert(tasks >= 1);
     assert(devs >= 1);
@@ -574,7 +697,7 @@ namespace triplet{
       auto it = *(recent.begin());// The first value stored
       recent.erase(recent.begin());
       //for (auto& it : recent){
-      Node* nd = global_graph.GetNode(it);
+      Node* nd = global_graph_pt->GetNode(it);
       for (auto& crtVertId : nd->input){
 	/** Calculate the whole row for crtVertId
 	 */
@@ -584,7 +707,7 @@ namespace triplet{
 	}
 
 	// 2.3.1 If not all of crtVertId's output has been calculated, continue!
-	Node* crtNd = global_graph.GetNode(crtVertId);
+	Node* crtNd = global_graph_pt->GetNode(crtVertId);
 	bool allSatisfied = true;
 	for(auto& succ : crtNd->output){
 	  if(OCT[succ][0] < 0){
@@ -600,7 +723,7 @@ namespace triplet{
 	for (int devId = 0; devId < devs; devId++) {
 	  max = 0;
 	  for(auto& vertId : crtNd->output){
-	    Node* vertex = global_graph.GetNode(vertId);
+	    Node* vertex = global_graph_pt->GetNode(vertId);
 	    min = -1;
 	    for(auto& dev : TaihuLight){
 	      if(OCT[vertex->GetId()][dev.first] < 0){ // The OCT item has not been calculated
@@ -643,8 +766,14 @@ namespace triplet{
    */
   // TODO: avoid overflow for big value
   void Runtime::CalcRankOCT(){
-    for (int ndId : idset){
-      Node* nd = global_graph.GetNode(ndId);
+    std::set<int> * tmp_idset;
+    if(this->GroupGraph()){
+      tmp_idset = &groupset;
+    }else{
+      tmp_idset = &idset;
+    }
+    for (int ndId : (*tmp_idset)){
+      Node* nd = global_graph_pt->GetNode(ndId);
       float rowOCT = 0;
       for (int i = 0; i < this->deviceNum; i++) {
 	//rowOCT += OCT[ndId][i];
@@ -666,7 +795,7 @@ namespace triplet{
     double SD = 0;
     // 1. Calculate the average weight and record it in node.
     float tmp_mean_weight;
-    Node* nd = global_graph.GetNode(ndId);
+    Node* nd = global_graph_pt->GetNode(ndId);
     if ( (tmp_mean_weight = nd->GetMeanWeight()) < 0 ) { //The mean weight has not been calculated
       tmp_mean_weight = 0;
       int i = 0;
@@ -693,7 +822,7 @@ namespace triplet{
 
     /** 1. Find the "sink" vertex.
      */
-    int sinkId = global_graph.GetSinkId();
+    int sinkId = global_graph_pt->GetSinkId();
 
     /** 2. Traversing the DAG from the exit to the entry vertex
 	and calculate the rank_u. Deal the cross-level edges carefully.
@@ -702,7 +831,7 @@ namespace triplet{
     std::set<int> recent; // Store the vertex ids that calculated recently
     float rank_HSIP, rank_HEFT;
     // 2.1 Calculate sink node's rank_u
-    Node* nd = global_graph.GetNode(sinkId);
+    Node* nd = global_graph_pt->GetNode(sinkId);
     rank_HSIP = CalcWeightMeanSD(sinkId);
     nd->SetRank_u_HSIP(rank_HSIP);
     nd->SetRank_u_HEFT(nd->GetMeanWeight());
@@ -712,10 +841,10 @@ namespace triplet{
     while ( !recent.empty() ){
       auto it = *(recent.begin());// The first value stored
       recent.erase(recent.begin());
-      Node* nd = global_graph.GetNode(it);
+      Node* nd = global_graph_pt->GetNode(it);
       for (auto& crtVertId : nd->input){
 
-	Node* crtNd = global_graph.GetNode(crtVertId);
+	Node* crtNd = global_graph_pt->GetNode(crtVertId);
 	// 2.2.0 If it has already been calculated, continue
 	if (crtNd->GetRank_u_HSIP() >= 0){
 	  continue;
@@ -724,7 +853,7 @@ namespace triplet{
 	// 2.2.1 If not all of the output nodes' rank_u have been calculated, continue!
 	bool allSatisfied = true;
 	for(auto& succ : crtNd->output){
-	  Node* succNd = global_graph.GetNode(succ);
+	  Node* succNd = global_graph_pt->GetNode(succ);
 	  if (succNd->GetRank_u_HSIP() < 0){
 	    allSatisfied = false;
 	  }
@@ -738,7 +867,7 @@ namespace triplet{
 	float max_ranku_HEFT = 0;
 	float tmp_ranku;
 	for(auto& succ : crtNd->output){
-	  Node* succNd = global_graph.GetNode(succ);
+	  Node* succNd = global_graph_pt->GetNode(succ);
 	  if (max_ranku_HSIP < (succNd->GetRank_u_HSIP()) ){
 	    max_ranku_HSIP = succNd->GetRank_u_HSIP();
 	  }
@@ -765,14 +894,14 @@ namespace triplet{
 
     /** 1. Find the "source" vertex.
      */
-    int sourceId = global_graph.GetSourceId();
+    int sourceId = global_graph_pt->GetSourceId();
 
     /** 2. Traversing the DAG from the source to the exit vertex
 	and calculate the rank_d.
     */
     std::set<int> recent; // Store the vertex ids that calculated recently
     // 2.1 Calculate source node's rank_d
-    Node* nd = global_graph.GetNode(sourceId);
+    Node* nd = global_graph_pt->GetNode(sourceId);
     nd->SetRank_d_CPOP(0);
     recent.insert(sourceId);
 
@@ -780,9 +909,9 @@ namespace triplet{
     while ( !recent.empty() ){
       auto it = *(recent.begin());// The first value stored
       recent.erase(recent.begin());
-      Node* nd = global_graph.GetNode(it);
+      Node* nd = global_graph_pt->GetNode(it);
       for (auto& crtVertId : nd->output){
-	Node* crtNd = global_graph.GetNode(crtVertId);
+	Node* crtNd = global_graph_pt->GetNode(crtVertId);
 	// 2.2.0 If it has already been calculated, continue
 	if (crtNd->GetRank_d_CPOP() >= 0){
 	  continue;
@@ -791,7 +920,7 @@ namespace triplet{
 	// 2.2.1 If not all of the input nodes' rank_d have been calculated, continue!
 	bool allSatisfied = true;
 	for(auto& pred : crtNd->input){
-	  Node* predNd = global_graph.GetNode(pred);
+	  Node* predNd = global_graph_pt->GetNode(pred);
 	  if (predNd->GetRank_d_CPOP() < 0){
 	    allSatisfied = false;
 	  }
@@ -804,7 +933,7 @@ namespace triplet{
 	float max_rankd_CPOP = 0;
 	float tmp_rankd;
 	for(auto& pred : crtNd->input){
-	  Node* predNd = global_graph.GetNode(pred);
+	  Node* predNd = global_graph_pt->GetNode(pred);
 	  tmp_rankd = CommunicationDataSize(pred, crtVertId) / TaihuLightNetwork.GetMeanBW() + predNd->GetMeanWeight() + predNd->GetRank_d_CPOP();
 	  max_rankd_CPOP = std::max(max_rankd_CPOP, tmp_rankd);
 	}
@@ -826,7 +955,7 @@ namespace triplet{
     float normdegree = nd->GetNDON();
     if(degree == 2){
       for (auto it : nd->output) {
-	normdegree += this->alpha_DON * global_graph.GetNode(it)->GetNDON();
+	normdegree += this->alpha_DON * global_graph_pt->GetNode(it)->GetNDON();
       }
     }
 
@@ -841,9 +970,9 @@ namespace triplet{
   void Runtime::CalcNDON(){
     for (auto it : idset) {
       float normdegree = 0;
-      Node* crtNd = global_graph.GetNode(it);
+      Node* crtNd = global_graph_pt->GetNode(it);
       for (auto succit : crtNd->output) {
-	normdegree += 1.0 / global_graph.GetNode(succit)->GetInNum();
+	normdegree += 1.0 / global_graph_pt->GetNode(succit)->GetInNum();
       }
       crtNd->SetNDON(normdegree);
     }
@@ -854,14 +983,14 @@ namespace triplet{
   void Runtime::CalcADON(){
     /** 1. Find the "sink" vertex.
      */
-    int sinkId = global_graph.GetSinkId();
+    int sinkId = global_graph_pt->GetSinkId();
 
     /** 2. Traversing the DAG from the exit to the entry vertex
 	and calculate the rank_ADON.
     */
     std::set<int> recent; // Store the vertex ids that calculated recently
     // 2.1 Calculate sink node's rank_ADON
-    Node* nd = global_graph.GetNode(sinkId);
+    Node* nd = global_graph_pt->GetNode(sinkId);
     nd->SetRank_ADON(0);
     recent.insert(sinkId);
 
@@ -869,10 +998,10 @@ namespace triplet{
     while ( !recent.empty() ){
       auto it = *(recent.begin());// The first value stored
       recent.erase(recent.begin());
-      Node* nd = global_graph.GetNode(it);
+      Node* nd = global_graph_pt->GetNode(it);
       for (auto& crtVertId : nd->input){
 
-	Node* crtNd = global_graph.GetNode(crtVertId);
+	Node* crtNd = global_graph_pt->GetNode(crtVertId);
 	// 2.2.0 If it has already been calculated, continue
 	if (crtNd->GetRank_ADON() >= 0){
 	  continue;
@@ -881,7 +1010,7 @@ namespace triplet{
 	// 2.2.1 If not all of the output nodes' rank_ADON have been calculated, continue!
 	bool allSatisfied = true;
 	for(auto& succ : crtNd->output){
-	  Node* succNd = global_graph.GetNode(succ);
+	  Node* succNd = global_graph_pt->GetNode(succ);
 	  if (succNd->GetRank_ADON() < 0){
 	    allSatisfied = false;
 	  }
@@ -893,7 +1022,7 @@ namespace triplet{
 	// 2.2.2 Calculate rank_ADON for current vertex
 	float tmp_rank_ADON = crtNd->GetNDON();
 	for(auto& succ : crtNd->output){
-	  Node* succNd = global_graph.GetNode(succ);
+	  Node* succNd = global_graph_pt->GetNode(succ);
 	  tmp_rank_ADON += this->alpha_DON * succNd->GetRank_ADON();
 	}
 	crtNd->SetRank_ADON(tmp_rank_ADON);
@@ -966,13 +1095,13 @@ namespace triplet{
       for (; it != execution_queue.end();){
 	if (it->second <= (global_timer + ZERO_POSITIVE)){
 
-	  Node* nd = global_graph.GetNode(it->first);
+	  Node* nd = global_graph_pt->GetNode(it->first);
 
 	  // Check if the task can be committed
 	  bool commitable = true;
 	  std::set<int>::iterator ndit;
 	  for (ndit = nd->output.begin(); ndit != nd->output.end(); ndit ++){
-	    Node* tmpNd = global_graph.GetNode(*ndit);
+	    Node* tmpNd = global_graph_pt->GetNode(*ndit);
 	    if(tmpNd->GetStep() > nd->GetStep()){
 	      // An error detected
 	      commitable = false;
@@ -1025,13 +1154,13 @@ namespace triplet{
 
 	  // update pending list and ready queue and success nodes' level
 	  for (ndit = nd->output.begin(); ndit != nd->output.end(); ndit ++){
-	    if(global_graph.GetNode(*ndit)->GetStep() < nd->GetStep()){
+	    if(global_graph_pt->GetNode(*ndit)->GetStep() < nd->GetStep()){
 	      // In a pipeline, only one step difference is permitted
 	      assert(nd->GetStep() ==
-		     global_graph.GetNode(*ndit)->GetStep() + 1);
+		     global_graph_pt->GetNode(*ndit)->GetStep() + 1);
 	      // Reset ndit's pending number then update its step
-	      pending_list[*ndit] = global_graph.GetNode(*ndit)->GetInNum();
-	      global_graph.GetNode(*ndit)->SetStep(nd->GetStep());
+	      pending_list[*ndit] = global_graph_pt->GetNode(*ndit)->GetInNum();
+	      global_graph_pt->GetNode(*ndit)->SetStep(nd->GetStep());
 	    }
 	    int pendingNum = pending_list[*ndit];
 	    pendingNum --;
@@ -1043,17 +1172,17 @@ namespace triplet{
 
 	    if (pendingNum == 0){
 	      ready_queue.push_back(*ndit);
-	      global_graph.GetNode(*ndit)->SetStatus(READY); // Set node's status
+	      global_graph_pt->GetNode(*ndit)->SetStatus(READY); // Set node's status
 
 	      // Calculate Cpath computatin cost
-	      global_graph.CalcCpathCC(*ndit, this->max_devCompute, this->min_execution_time);
-	      global_graph.CalcCpathCCMem(*ndit, this->max_devCompute, TaihuLight[this->max_computeDevId]->GetBw(), this->min_execution_time);
+	      global_graph_pt->CalcCpathCC(*ndit, this->max_devCompute, this->min_execution_time);
+	      global_graph_pt->CalcCpathCCMem(*ndit, this->max_devCompute, TaihuLight[this->max_computeDevId]->GetBw(), this->min_execution_time);
 
 	      //Record the current time
-	      global_graph.GetNode(*ndit)->SetWaitTime(this->global_timer);
+	      global_graph_pt->GetNode(*ndit)->SetWaitTime(this->global_timer);
 	    }
 	    if(nd->GetStep() == 0){
-	      global_graph.GetNode(*ndit)->SetLevel(nd->GetLevel() + 1);
+	      global_graph_pt->GetNode(*ndit)->SetLevel(nd->GetLevel() + 1);
 	    }
 	  }
 
@@ -1063,13 +1192,13 @@ namespace triplet{
 
 	  // Check and set the status of the pred tasks
 	  for (auto& it : nd->input){
-	    Node* input_nd = global_graph.GetNode(it);
+	    Node* input_nd = global_graph_pt->GetNode(it);
 	    if(input_nd->GetStep() == nd->GetStep() &&
 	       input_nd->GetStatus() == FINISHED){
 	      int num_finished_succ = 0;
 	      for (auto& innerit : input_nd->output){
-		if(global_graph.GetNode(innerit)->GetStatus() == FINISHED ||
-		   global_graph.GetNode(innerit)->GetStatus() == REUSEABLE){
+		if(global_graph_pt->GetNode(innerit)->GetStatus() == FINISHED ||
+		   global_graph_pt->GetNode(innerit)->GetStatus() == REUSEABLE){
 		  num_finished_succ ++;
 		}
 	      }
@@ -1086,7 +1215,7 @@ namespace triplet{
 	  }
 
 	  //check for sink node
-	  if(nd->GetId() == global_graph.GetSinkId()){
+	  if(nd->GetId() == global_graph_pt->GetSinkId()){
 	    nd->SetStatus(REUSEABLE);
 	    this->step_done ++;
 #if 1
@@ -1119,7 +1248,7 @@ namespace triplet{
 	/** For debug: check the task status in ready_queue and execution_queue
 	 */
 	for(auto& ite: ready_queue){
-	  assert(global_graph.GetNode(ite)->IsReady());
+	  assert(global_graph_pt->GetNode(ite)->IsReady());
 	}
 
 	// TODO: 1. consider schedule time here;
@@ -1149,7 +1278,7 @@ namespace triplet{
 	  }
 	}
 
-	Node* nd = global_graph.GetNode(task_node_id);
+	Node* nd = global_graph_pt->GetNode(task_node_id);
 
 	//2.2 choose a free device to execute the task (default: choose the first free device)
 	/** If this is the only entry task and Scheduler is HSIP,
@@ -1224,7 +1353,7 @@ namespace triplet{
 	//transmission_time = std::max(transmission_time, this->min_transmission_time);
 
 	//Manage memory blocks data structures
-	int block_id = (nd->GetStep() * global_graph.Nodes()) + nd->GetId();
+	int block_id = (nd->GetStep() * global_graph_pt->Nodes()) + nd->GetId();
 	MemoryBlock* block = new MemoryBlock(block_id, dev->GetId(), std::max(CalcMemDmd(nd, dev),(float)0.0), nd->GetOutNum());
 	nd->SetMemAlloc(std::max(CalcMemDmd(nd, dev), 0.0f));
 	block->DoAlloc(TaihuLight);
@@ -1252,8 +1381,8 @@ namespace triplet{
 	}
 
 	for (std::set<int>::iterator iter = nd->input.begin(); iter != nd->input.end(); iter ++){
-	  Node* input_nd = global_graph.GetNode(*iter);
-	  block_free_queue.push_back(std::pair<int, float>((nd->GetStep() * global_graph.Nodes())+input_nd->GetId(), (transmission_time + global_timer)));
+	  Node* input_nd = global_graph_pt->GetNode(*iter);
+	  block_free_queue.push_back(std::pair<int, float>((nd->GetStep() * global_graph_pt->Nodes())+input_nd->GetId(), (transmission_time + global_timer)));
 	}
 
 	// Process the execution time
@@ -1316,7 +1445,7 @@ namespace triplet{
       if((this->max_step < this->total_step - 1) &&
 	 (this->max_step - this->step_done < this->issue_width)){
 	//Check if the source node can be added into ready queue
-	Node* sourceNd = global_graph.GetNode(global_graph.GetSourceId());
+	Node* sourceNd = global_graph_pt->GetNode(global_graph_pt->GetSourceId());
 	if(sourceNd->GetStatus() == REUSEABLE){
 	  // Add (the only) source node into ready queue
 	  ready_queue.push_back(sourceNd->GetId());
@@ -1338,11 +1467,11 @@ namespace triplet{
       /** For debug: check the task status in ready_queue and execution_queue
        */
       for(auto& ite: ready_queue){
-	assert(global_graph.GetNode(ite)->IsReady());
+	assert(global_graph_pt->GetNode(ite)->IsReady());
       }
 
       for(auto& ite: execution_queue){
-	assert(global_graph.GetNode(ite.first)->GetStatus() == RUNNING);
+	assert(global_graph_pt->GetNode(ite.first)->GetStatus() == RUNNING);
       }
 
     }
@@ -1390,11 +1519,11 @@ namespace triplet{
       std::vector<int>::iterator iter = ready_queue.begin();
       for (; iter != ready_queue.end(); iter++){
 	if (leastComDmd < 0){ // the first node in ready_queue
-	  Node * nd = global_graph.GetNode(*iter);
+	  Node * nd = global_graph_pt->GetNode(*iter);
 	  leastComDmd = nd->GetCompDmd();
 	  taskIdx = *iter;
 	}else{
-	  Node * nd = global_graph.GetNode(*iter);
+	  Node * nd = global_graph_pt->GetNode(*iter);
 	  tmpComDmd = nd->GetCompDmd();
 	  if (leastComDmd > tmpComDmd){
 	    leastComDmd = tmpComDmd;
@@ -1418,7 +1547,7 @@ namespace triplet{
       float maxPriority = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
       for (; iter != ready_queue.end(); iter++){
-	Node* nd = global_graph.GetNode(*iter);
+	Node* nd = global_graph_pt->GetNode(*iter);
 	if(Scheduler == PEFT){ //PEFT
 	  if (maxPriority < nd->GetRankOCT()){
 	    maxPriority = nd->GetRankOCT();
@@ -1473,9 +1602,9 @@ namespace triplet{
 	  Device* dv = TaihuLight[(it.second)->DeviceLocation()];
 	  if(dv->IsFull() && (min_deps < 0 || min_deps > (it.second)->GetRefers())){
 	    int readynum = 0;
-	    Node* nd_pointer = global_graph.GetNode(it.first);
+	    Node* nd_pointer = global_graph_pt->GetNode(it.first);
 	    for(auto& innerit : nd_pointer->output){
-	      if(global_graph.GetNode(innerit)->IsReady()){
+	      if(global_graph_pt->GetNode(innerit)->IsReady()){
 		readynum ++;
 	      }
 	    }
@@ -1488,7 +1617,7 @@ namespace triplet{
 	//assert(mem_block_id >= 0);
 	if(mem_block_id >= 0){
 	  //traverse the ready queue, pick a task which is the seccess nodes of the picked node
-	  Node* nd_pointer = global_graph.GetNode(mem_block_id);
+	  Node* nd_pointer = global_graph_pt->GetNode(mem_block_id);
 	  std::vector<int>::iterator iter = ready_queue.begin();
 	  for (; iter != ready_queue.end(); iter++){
 	    if(nd_pointer->output.find(*iter) != nd_pointer->output.end()){//it's a success node
@@ -1505,7 +1634,7 @@ namespace triplet{
 	float degree, maxOutDegree = -1;
 	std::vector<int>::iterator iter = ready_queue.begin();
 	for (; iter != ready_queue.end(); iter++){
-	  Node* nd = global_graph.GetNode(*iter);
+	  Node* nd = global_graph_pt->GetNode(*iter);
 	  if( Scheduler == ADON ||
 	      Scheduler == ADONL ||
 	      Scheduler == LA ){ // ADON, ADONL, LA
@@ -1529,7 +1658,7 @@ namespace triplet{
       Device * dev;
       std::vector<int>::iterator iter = ready_queue.begin();
       for (; iter != ready_queue.end(); iter++){
-	Node* nd = global_graph.GetNode(*iter);
+	Node* nd = global_graph_pt->GetNode(*iter);
 	pred_eft = Lookahead(1, this->global_timer, nd, &dev);
 	if(min_pred_eft < 0 || min_pred_eft > pred_eft){
 	  min_pred_eft = pred_eft;
@@ -1542,7 +1671,7 @@ namespace triplet{
       float cost, maxCost = -1;
       std::vector<int>::iterator iter = ready_queue.begin();
       for (; iter != ready_queue.end(); iter++){
-	Node* nd = global_graph.GetNode(*iter);
+	Node* nd = global_graph_pt->GetNode(*iter);
 	cost = nd->GetCompDmd() / this->mean_computing_power + std::max(nd->GetDataDmd(), nd->GetDataGenerate()) / this->mean_bandwidth;
 	if(maxCost < cost){
 	  maxCost = cost;
@@ -1574,7 +1703,7 @@ namespace triplet{
     float dmd = 0;
     dmd = std::max(nd->GetDataDmd(), nd->GetDataGenerate());
     for (auto& pred : nd->input){
-      Node* predNd = global_graph.GetNode(pred);
+      Node* predNd = global_graph_pt->GetNode(pred);
       if(predNd->GetOccupied() == dev->GetId() && predNd->GetDataGenerate() > ZERO_NEGATIVE){
 	dmd -= predNd->GetDataGenerate();
       }
@@ -1607,7 +1736,7 @@ namespace triplet{
 	}
 #if 1
 	if(nd->Loc() != -1){
-	  Node * depNd = global_graph.GetNode(nd->Loc());
+	  Node * depNd = global_graph_pt->GetNode(nd->Loc());
 	  if(depNd->GetOccupied() != -1 && depNd->GetOccupied() != it.first){
 	    continue;
 	  }
@@ -1649,7 +1778,7 @@ namespace triplet{
 	}
 #if 1
 	if(nd->Loc() != -1){
-	  Node * depNd = global_graph.GetNode(nd->Loc());
+	  Node * depNd = global_graph_pt->GetNode(nd->Loc());
 	  if(depNd->GetOccupied() != -1 && depNd->GetOccupied() != it.first){
 	    continue;
 	  }
@@ -1684,7 +1813,7 @@ namespace triplet{
 	std::vector<std::pair<float, int>> succNds;
 	if(this->Scheduler == LA || this->Scheduler == LALF){
 	  for (auto& succId : nd->output) {
-	    Node * succNd = global_graph.GetNode(succId);
+	    Node * succNd = global_graph_pt->GetNode(succId);
 	    //succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succId));
 	    if(this->Scheduler == LA){
 	      succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succNd->GetId()));
@@ -1697,7 +1826,7 @@ namespace triplet{
 	    if(succId == nd->GetId()){//It is actually the parent task itself
 	      continue;
 	    }
-	    Node * succNd = global_graph.GetNode(succId);
+	    Node * succNd = global_graph_pt->GetNode(succId);
 	    succNds.push_back(std::make_pair<float, int>(succNd->GetRank_ADON(), succNd->GetId()));
 	  }
 	}
@@ -1717,7 +1846,7 @@ namespace triplet{
 
 	for (auto& succIt : succNds) {
 	  int succId = succIt.second;
-	  Node * succNd = global_graph.GetNode(succId);
+	  Node * succNd = global_graph_pt->GetNode(succId);
 	  float EFT_tmp;
 	  if(this->Scheduler == LA || this->Scheduler == LALF){
 	    EFT_tmp = Lookahead(depth-1, time_tmp, succNd, &dev_in);
@@ -1771,7 +1900,7 @@ namespace triplet{
 
     //int CTM[][3] = {22, 21, 36, 22, 18, 18, 32, 27, 43, 7, 10, 4, 29, 27, 35, 26, 17, 24, 14, 25, 30, 29, 23, 36, 15, 21, 8, 13, 16, 33};
 
-    Node * nd = global_graph.GetNode(ndId);
+    Node * nd = global_graph_pt->GetNode(ndId);
     Device * dev = NULL;
 
     if(nd->Loc() != -1){
@@ -1922,7 +2051,7 @@ namespace triplet{
 	   devices instead of tasks.
 	 */
 	for (auto& pred : nd->input){
-	  Node* predNd = global_graph.GetNode(pred);
+	  Node* predNd = global_graph_pt->GetNode(pred);
 	  if (predNd->GetOccupied() == it.first || (predNd->GetInNum() == 0 && this->ETD) ){
 	    /** Execute on the same device
 		or the pred node is an entry node with ETD == true
@@ -2068,7 +2197,7 @@ namespace triplet{
       if (comtime > (caltime * this->DCRatio)){// pick according to data location
 	// Increase the counter and get the device
 	dc_valid_counter++;
-	dev = TaihuLight[global_graph.GetNode(ndidx)->GetOccupied()];
+	dev = TaihuLight[global_graph_pt->GetNode(ndidx)->GetOccupied()];
       }else{// pick according to EFT
 	float min_OEFT = -1;
 	for (auto& it: TaihuLight){
@@ -2088,7 +2217,7 @@ namespace triplet{
 	  float tmpEST;
 	  // TODO: The logic below can be replaced by CalcTransmissionTime()
 	  for (auto& pred : nd->input){
-	    Node* predNd = global_graph.GetNode(pred);
+	    Node* predNd = global_graph_pt->GetNode(pred);
 	    if (predNd->GetOccupied() == it.first){
 	      /** Execute on the same device
 	      */
@@ -2197,7 +2326,7 @@ namespace triplet{
     //1. Calculate total_data_output
     float total_data_output = 0.0;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
-      Node* input_nd = global_graph.GetNode(*iter);
+      Node* input_nd = global_graph_pt->GetNode(*iter);
       if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
 	total_data_output += input_nd->GetDataGenerate();
       }else{
@@ -2220,7 +2349,7 @@ namespace triplet{
     //3. Walk through all the input nodes of nd, and calc the transmission time
     std::map<int, float> TransSize;
     for (std::set<int>::iterator iter = nd.input.begin(); iter != nd.input.end(); iter ++){
-      Node* input_nd = global_graph.GetNode(*iter);
+      Node* input_nd = global_graph_pt->GetNode(*iter);
       int input_dev_id = input_nd->GetOccupied();
 
       if(input_dev_id == -1){
@@ -2239,9 +2368,9 @@ namespace triplet{
 	// There's not an entry, create one
 	TransSize[input_dev_id] = 0.0;
       }
-      if ( (global_graph.GetComCost( *iter, nd.GetId() )) >= ZERO_POSITIVE ) {
+      if ( (global_graph_pt->GetComCost( *iter, nd.GetId() )) >= ZERO_POSITIVE ) {
 	// The edge has a weight
-	TransSize[input_dev_id] += global_graph.GetComCost( *iter, nd.GetId() );
+	TransSize[input_dev_id] += global_graph_pt->GetComCost( *iter, nd.GetId() );
       }else{
 	// The edge doesn't have a weight
 	if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
@@ -2322,15 +2451,15 @@ namespace triplet{
       Return it as a float value.
    */
   float Runtime::CommunicationDataSize(int predId, int succId){
-    float dataSize = global_graph.GetComCost(predId, succId);
+    float dataSize = global_graph_pt->GetComCost(predId, succId);
     if (dataSize < 0){//No edge weight found, need to calculate
       float total_data_output = 0.0;
       float data_trans_ratio = 1.0;
 
       // Calculate the total output size of succId's all pred nodes
-      Node* nd = global_graph.GetNode(succId);
+      Node* nd = global_graph_pt->GetNode(succId);
       for (auto& it : nd->input){
-	Node* input_nd = global_graph.GetNode(it);
+	Node* input_nd = global_graph_pt->GetNode(it);
 	if(input_nd->GetDataGenerate() > ZERO_POSITIVE){
 	  total_data_output += input_nd->GetDataGenerate();
 	}else{
@@ -2349,10 +2478,10 @@ namespace triplet{
 	}
       }
 
-      if(global_graph.GetNode(predId)->GetDataGenerate() > ZERO_POSITIVE){
-	dataSize = std::max(global_graph.GetNode(predId)->GetDataGenerate(), (float)0.0) * data_trans_ratio;
+      if(global_graph_pt->GetNode(predId)->GetDataGenerate() > ZERO_POSITIVE){
+	dataSize = std::max(global_graph_pt->GetNode(predId)->GetDataGenerate(), (float)0.0) * data_trans_ratio;
       }else{
-	dataSize = std::max(global_graph.GetNode(predId)->GetDataDmd(), (float)0.0) * data_trans_ratio;
+	dataSize = std::max(global_graph_pt->GetNode(predId)->GetDataDmd(), (float)0.0) * data_trans_ratio;
       }
     }
     return dataSize;
@@ -2420,7 +2549,7 @@ namespace triplet{
      */
     float min_data_demand = -1;
     for (auto& it : ready_queue) {
-      Node* nd = global_graph.GetNode(it);
+      Node* nd = global_graph_pt->GetNode(it);
       if ( min_data_demand < 0 || min_data_demand > nd->GetDataDmd()){
 	min_data_demand = nd->GetDataDmd();
       }
@@ -2452,7 +2581,7 @@ namespace triplet{
       /** 3. Ready queue nodes' data demand
        */
       for (auto& it : ready_queue) {
-	std::cout<<"| Node "<<it<<", data demand:"<<global_graph.GetNode(it)->GetDataDmd()<<std::endl;
+	std::cout<<"| Node "<<it<<", data demand:"<<global_graph_pt->GetNode(it)->GetDataDmd()<<std::endl;
       }
       /** 4. Execution queue nodes
        */
@@ -2484,7 +2613,7 @@ namespace triplet{
     int numtasks = 0;
     for (auto it : idset) {
       numtasks++;
-      meanwaittime += (global_graph.GetNode(it)->GetWaitTime() - meanwaittime) / numtasks;
+      meanwaittime += (global_graph_pt->GetNode(it)->GetWaitTime() - meanwaittime) / numtasks;
     }
 
     return meanwaittime;
@@ -2573,9 +2702,9 @@ namespace triplet{
   /** Output the simlulation report.
    */
   void Runtime::SimulationReport(){
-    std::cout<<"max_cpath_cc: "<<this->max_cpath_cc<<", max_capth_cc_mem: "<<this->max_cpath_cc_mem<<", serial:"<<(global_graph.GetTotalCost()/this->max_devCompute)<<", with mem:"<<(global_graph.GetTotalCost()/this->max_devCompute + global_graph.TotalMemAcce()/TaihuLight[this->max_computeDevId]->GetBw())<<std::endl;
-    float speedup = this->total_step * std::max(this->max_cpath_cc, (global_graph.GetTotalCost()/this->max_devCompute))/this->global_timer;
-    float speedup_mem_accounted = this->total_step * std::max(this->max_cpath_cc_mem, (global_graph.GetTotalCost()/this->max_devCompute + global_graph.TotalMemAcce()/TaihuLight[this->max_computeDevId]->GetBw())) / this->global_timer;
+    std::cout<<"max_cpath_cc: "<<this->max_cpath_cc<<", max_capth_cc_mem: "<<this->max_cpath_cc_mem<<", serial:"<<(global_graph_pt->GetTotalCost()/this->max_devCompute)<<", with mem:"<<(global_graph_pt->GetTotalCost()/this->max_devCompute + global_graph_pt->TotalMemAcce()/TaihuLight[this->max_computeDevId]->GetBw())<<std::endl;
+    float speedup = this->total_step * std::max(this->max_cpath_cc, (global_graph_pt->GetTotalCost()/this->max_devCompute))/this->global_timer;
+    float speedup_mem_accounted = this->total_step * std::max(this->max_cpath_cc_mem, (global_graph_pt->GetTotalCost()/this->max_devCompute + global_graph_pt->TotalMemAcce()/TaihuLight[this->max_computeDevId]->GetBw())) / this->global_timer;
     std::cout<<"-------- Simulation Report --------"<<std::endl;
     std::cout<<" Graph file: "<<graph_file_name<<std::endl;
     std::cout<<" Cluster: "<<cluster_file_name<<std::endl;
@@ -2641,10 +2770,17 @@ namespace triplet{
     if(fp == NULL){
       exit(-1);
     }else{
-      for(auto i : running_history){
-	//std::cout<<i.first<<","<<i.second<<std::endl;
-	fprintf(fp, "%d,%d\n", i.first, i.second);
-      }
+	for(auto i : running_history){
+	  if(this->GroupGraph()){
+	    Node * nd = global_graph_pt->GetNode(i.first);
+	    for(int ndid : nd->nodes_in_group){
+	      fprintf(fp, "%d,%d\n", ndid, i.second);
+	    }
+	  }else{
+	  //std::cout<<i.first<<","<<i.second<<std::endl;
+	  fprintf(fp, "%d,%d\n", i.first, i.second);
+	  }
+	}
       fclose(fp);
     }
     std::cout<<"-----------------------------------"<<std::endl;

@@ -12,8 +12,10 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), cpath_cc_mem(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1), mem_alloced(0.0), occupied_device(-1) {}
+    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), cpath_cc_mem(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1), mem_alloced(0.0), occupied_device(-1), is_group(false), group(-1) {}
   Node::Node(int id, float compDmd, float dataDmd, float dataConsume, float dataGenerate){
+    is_group = false;
+    group = -1;
     status = INIT;
     AFT = -1.0;
     id_ = id;
@@ -409,6 +411,31 @@ namespace triplet{
     return this->mem_alloced;
   }
 
+  /** If it is a group node.
+   */
+  bool Node::IsGroup(){
+    return this->is_group;
+  }
+
+  /** Set is_group.
+   */
+  void Node::SetIsGroup(bool group_bool){
+    this->is_group = group_bool;
+  }
+
+  /** Set group number.
+   */
+  void Node::SetGroup(int g_num){
+    //assert(g_num >= 0);
+    this->group = g_num;
+  }
+
+  /** Return group number.
+   */
+  int Node::Group(){
+    return this->group;
+  }
+
 
   // class graph
   Graph::Graph(){
@@ -451,7 +478,7 @@ namespace triplet{
       comDmd: computation demand
       dataDmd: data demand
   */
-  void Graph::AddNode(int id, float comDmd, float dataDmd, float dataConsume, float dataGenerate, int location){
+  void Graph::AddNode(int id, float comDmd, float dataDmd, float dataConsume, float dataGenerate, int location, int group){
     assert(id >= 0);
     assert(comDmd > 0.0);
     graphmap::iterator it;
@@ -463,6 +490,7 @@ namespace triplet{
     //node->SetCompDmd(comDmd);
     //node->SetDataDmd(dataDmd);
     node->SetLoc(location);
+    node->SetGroup(group);
     graph_[id] = node;
     numNode++;
     maxNode = std::max(maxNode, id);
@@ -490,13 +518,16 @@ namespace triplet{
     itDst->second->AddInput(src);
 
     // Record the communication cost
-    comCostMap[std::make_pair(src, dst)] = comCost;
+    if(comCostMap.find(std::make_pair(src, dst)) == comCostMap.end()){
+      comCostMap[std::make_pair(src, dst)] = comCost;
+      numEdge++;
+    }else{
+      comCostMap[std::make_pair(src, dst)] = std::max(comCostMap[std::make_pair(src, dst)], (float)ZERO_POSITIVE) + comCost;
+    }
 
     if (comCost >= ZERO_NEGATIVE){
       total_edge_weight += comCost;
     }
-
-    numEdge++;
   }
 
   /** Get a node pointer according to the given node id.

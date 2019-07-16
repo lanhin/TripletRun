@@ -192,7 +192,7 @@ TEST(RuntimeTest, Lookahead){
   triplet::Runtime rt;
   rt.InitGraph("graph_test.json");
   rt.InitCluster("cluster_test.json");
-  rt.InitRuntime(triplet::DONF);
+  rt.InitRuntime(triplet::LALF);
 
   triplet::Cluster sugon = rt.GetCluster();
   triplet::Graph gr = rt.GetGraph();
