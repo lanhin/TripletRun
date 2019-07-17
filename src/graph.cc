@@ -12,9 +12,9 @@
 namespace triplet{
   // class Node
   Node::Node()
-    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), cpath_cc_mem(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1), mem_alloced(0.0), occupied_device(-1), is_group(false), group(-1) {}
+    :status(INIT), AFT(-1.0), id_(-1), level(-1), step(0), rank_OCT(0),rank_u_HSIP(-1), rank_u_HEFT(-1), mean_weight(-1.0), wait_time(0.0), cpath_cc(0.0), cpath_cc_mem(0.0), NDON(0.0), rank_d_CPOP(-1), priority_CPOP(0), rank_ADON(-1), mem_alloced(0.0), occupied_device(-1), group(-1), visited(false) {}
   Node::Node(int id, float compDmd, float dataDmd, float dataConsume, float dataGenerate){
-    is_group = false;
+    visited = false;
     group = -1;
     status = INIT;
     AFT = -1.0;
@@ -411,18 +411,6 @@ namespace triplet{
     return this->mem_alloced;
   }
 
-  /** If it is a group node.
-   */
-  bool Node::IsGroup(){
-    return this->is_group;
-  }
-
-  /** Set is_group.
-   */
-  void Node::SetIsGroup(bool group_bool){
-    this->is_group = group_bool;
-  }
-
   /** Set group number.
    */
   void Node::SetGroup(int g_num){
@@ -436,6 +424,17 @@ namespace triplet{
     return this->group;
   }
 
+  /** Return visited.
+   */
+  bool Node::Visited(){
+    return this->visited;
+  }
+
+  /** Set visited.
+   */
+  void Node::SetVisited(bool vi){
+    this->visited = vi;
+  }
 
   // class graph
   Graph::Graph(){
@@ -705,6 +704,43 @@ namespace triplet{
    */
   float Graph::TotalMemAcce(){
     return this->total_memory_cost;
+  }
+
+  /** Check if rings exist, return true if there are rings.
+   */
+  bool Graph::CheckRing(){
+    bool rings = false;
+    if(dfs(sourceId)){
+      return true;
+    }
+    return rings;
+  }
+
+  /** Deep first search, print rings and return true if any ring is found.
+   */
+  bool Graph::dfs(int ndId){
+    bool ringFound = false;
+    Node * nd = this->GetNode(ndId);
+    nd->SetVisited(true);
+    (this->ndIdStack).push_back(ndId);
+    for(int succId : nd->output){
+      if(std::find(ndIdStack.begin(), ndIdStack.end(), succId) == ndIdStack.end()){
+	if( !((this->GetNode(succId))->Visited()) ){
+	  if(dfs(succId)){
+	    ringFound = true;
+	  }
+	}
+      }else{
+	std::cout<<"Circle:";
+	  for(auto it = std::find(ndIdStack.begin(), ndIdStack.end(), succId); it != ndIdStack.end(); it++){
+	  std::cout<<" "<<*it;
+	}
+	std::cout<<std::endl;
+	ringFound = true;
+      }
+    }
+    (this->ndIdStack).pop_back();
+    return ringFound;
   }
 
   /** Report the 3 summary value.

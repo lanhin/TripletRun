@@ -9,6 +9,8 @@
 
 #include <set>
 #include <map>
+#include <vector>
+#include <algorithm>
 
 namespace triplet{
   enum NodeStatus {
@@ -251,14 +253,6 @@ namespace triplet{
      */
     float MemAlloc();
 
-    /** If it is a group node.
-     */
-    bool IsGroup();
-
-    /** Set is_group.
-     */
-    void SetIsGroup(bool group_bool);
-
     /** Set group number.
      */
     void SetGroup(int g_num);
@@ -266,6 +260,14 @@ namespace triplet{
     /** Return group number.
      */
     int Group();
+
+    /** Return visited.
+     */
+    bool Visited();
+
+    /** Set visited.
+     */
+    void SetVisited(bool vi = true);
 
     /** The id set of the succ nodes.
      */
@@ -280,7 +282,7 @@ namespace triplet{
     nodeset nodes_in_group;
 
   protected:
-    bool is_group;
+    bool visited; //Bool for ring detection.
     NodeStatus status; //INIT, READY, RUNNING and FINISHED
     int id_;
     int occupied_device; // the occupied device id
@@ -410,6 +412,14 @@ namespace triplet{
      */
     float TotalMemAcce();
 
+    /** Check if rings exist, return true if there are rings.
+     */
+    bool CheckRing();
+
+    /** Deep first search, print rings and return true if any ring is found.
+     */
+    bool dfs(int ndId);
+
     typedef std::map<int,Node*> graphmap;
   protected:
     graphmap graph_;
@@ -418,6 +428,7 @@ namespace triplet{
     int maxNode; //Max node id
     int sourceId; // Source vertex id
     int sinkId; // Sink vertex id
+    std::vector<int> ndIdStack; // node ID stack for dfs
 
     /* TODO: Record accuracy. */
     float total_computation_cost; //Summary of computation cost

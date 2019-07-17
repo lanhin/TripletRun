@@ -374,6 +374,10 @@ namespace triplet{
 
     global_group_graph.SetSourceId(sourceId);
     global_group_graph.SetSinkId(sinkId);
+
+    if(global_group_graph.CheckRing()){
+      exit(-1);
+    }
   }
 
 
