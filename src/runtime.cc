@@ -295,12 +295,12 @@ namespace triplet{
       int group_id = nd->Group();
       if(groupset.find(group_id) == groupset.end()){
 	//A new group
-	global_group_graph.AddNode(group_id, nd->GetCompDmd(), nd->GetDataDmd(), nd->GetDataConsume(), nd->GetDataGenerate());
+	global_group_graph.AddNode(group_id, std::max(nd->GetCompDmd(), 0.0f), std::max(nd->GetDataDmd(), 0.0f), std::max(nd->GetDataConsume(), 0.0f), std::max(nd->GetDataGenerate(), 0.0f));
 	groupset.insert(group_id);
       }else{//The group already exists
 	Node * gnd = global_group_graph.GetNode(group_id);
-	gnd->SetCompDmd(gnd->GetCompDmd() + nd->GetCompDmd());
-	gnd->SetDataDmd(gnd->GetDataDmd() + nd->GetDataDmd());
+	gnd->SetCompDmd(gnd->GetCompDmd() + std::max(nd->GetCompDmd(), 0.0f));
+	gnd->SetDataDmd(gnd->GetDataDmd() + std::max(nd->GetDataDmd(), 0.0f));
 	// dataConsume & dataGenerate is not necessary
       }
       global_group_graph.GetNode(group_id)->nodes_in_group.insert(ndId);
@@ -968,7 +968,14 @@ namespace triplet{
   /** Calculate NDON for all nodes in initruntime().
    */
   void Runtime::CalcNDON(){
-    for (auto it : idset) {
+    std::set<int> * tmp_idset;
+    if(this->GroupGraph()){
+      tmp_idset = &groupset;
+    }else{
+      tmp_idset = &idset;
+    }
+
+    for (auto it : *tmp_idset) {
       float normdegree = 0;
       Node* crtNd = global_graph_pt->GetNode(it);
       for (auto succit : crtNd->output) {
@@ -2611,7 +2618,14 @@ namespace triplet{
   float Runtime::GetMeanWaitTime(){
     float meanwaittime = 0;
     int numtasks = 0;
-    for (auto it : idset) {
+    std::set<int> * tmp_idset;
+    if(this->GroupGraph()){
+      tmp_idset = &groupset;
+    }else{
+      tmp_idset = &idset;
+    }
+
+    for (auto it : *tmp_idset) {
       numtasks++;
       meanwaittime += (global_graph_pt->GetNode(it)->GetWaitTime() - meanwaittime) / numtasks;
     }

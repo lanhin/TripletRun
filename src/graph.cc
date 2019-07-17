@@ -71,7 +71,7 @@ namespace triplet{
   /** Set the data demand of the node.
    */
   void Node::SetDataDmd(float demand){
-    assert(demand > 0.0);
+    assert(demand > ZERO_NEGATIVE);
     data_demand = demand;
   }
 

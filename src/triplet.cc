@@ -287,6 +287,7 @@ int main(int argc, char *argv[])
   rt.SetGroupGraph(groupgraph);
   rt.InitGraph(graphfile);
   if(rt.GroupGraph()){
+    std::cout<<"Group graph..."<<std::endl;
     rt.InitGroupGraph();
   }
   STOP_TIMING(graph);
