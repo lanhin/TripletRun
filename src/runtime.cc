@@ -306,13 +306,22 @@ namespace triplet{
       global_group_graph.GetNode(group_id)->nodes_in_group.insert(ndId);
       // speed ratios
       int max_type = 2;
-      for(int type=1; type <= max_type; type ++){
+      for(int type=2; type <= max_type; type ++){
 	if(nd->GetRatio(type) < ZERO_NEGATIVE){
 	  global_group_graph.GetNode(group_id)->AddRatio(type, -1.0);
 	}
       }
     }
-
+#if 1
+    //Set CPU ratios
+    for (std::set<int>::iterator iter = groupset.begin(); iter != groupset.end(); iter++){
+      Node * nd = global_group_graph.GetNode(*iter);
+      if(nd->GetRatio(1) > ZERO_POSITIVE &&
+	 nd->GetRatio(2) > ZERO_POSITIVE){
+	nd->AddRatio(1, -1.0);
+      }
+    }
+#endif
     this->global_graph_pt = &(this->global_graph);
     // Init edges
     for(int ndId : idset) {
@@ -375,6 +384,8 @@ namespace triplet{
     global_group_graph.SetSourceId(sourceId);
     global_group_graph.SetSinkId(sinkId);
 
+
+    // Check ring.
     if(global_group_graph.CheckRing()){
       exit(-1);
     }
